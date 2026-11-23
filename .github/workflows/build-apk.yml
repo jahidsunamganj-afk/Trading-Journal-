@@ -548,12 +548,61 @@ jobs:
           sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <application#' android/app/src/main/AndroidManifest.xml
           head -5 android/app/src/main/AndroidManifest.xml
 
-      # 👇 এই নতুন স্টেপটিই লিন্ট ক্র্যাশ সমাধান করবে 👇
-      - name: Disable Android Lint to bypass google_sign_in bug
+      # 👇 এই স্টেপটি এখন Kotlin DSL এবং Groovy DSL দুটোই হ্যান্ডেল করবে 👇
+      - name: Disable Android Lint (bypass google_sign_in bug)
         run: |
-          sed -i '/android {/a\    lintOptions { checkReleaseBuilds false; abortOnError false }' android/app/build.gradle
-          echo "=== build.gradle (first 20 lines) ==="
-          head -20 android/app/build.gradle
+          echo "=== Detecting build file format ==="
+          find android -name "build.gradle*" -type f
+
+          python3 << 'PYEOF'
+          import os, re, sys
+
+          def patch(path, pattern, insertion):
+              content = open(path).read()
+              if 'abortOnError' in content:
+                  print(f"Already patched: {path}")
+                  return True
+              new_content, n = re.subn(pattern, lambda m: m.group(0) + '\n' + insertion, content, count=1, flags=re.MULTILINE)
+              if n == 0:
+                  print(f"Pattern not found in {path}")
+                  return False
+              open(path, 'w').write(new_content)
+              print(f"Patched: {path}")
+              return True
+
+          kts = "android/app/build.gradle.kts"
+          groovy = "android/app/build.gradle"
+
+          if os.path.exists(kts):
+              ins = '''    lint {
+                      checkReleaseBuilds = false
+                      abortOnError = false
+                      disable += "EasterEgg"
+                      disable += "StopShip"
+                  }'''
+              if patch(kts, r'^android\s*\{', ins):
+                  sys.exit(0)
+
+          if os.path.exists(groovy):
+              ins = '''    lintOptions {
+                      checkReleaseBuilds false
+                      abortOnError false
+                      disable 'EasterEgg', 'StopShip'
+                  }'''
+              if patch(groovy, r'^android\s*\{', ins):
+                  sys.exit(0)
+
+          print("ERROR: Could not patch build file")
+          sys.exit(1)
+          PYEOF
+
+          echo "=== Verify patch ==="
+          if [ -f android/app/build.gradle.kts ]; then
+            head -60 android/app/build.gradle.kts | grep -A6 "lint"
+          fi
+          if [ -f android/app/build.gradle ]; then
+            head -60 android/app/build.gradle | grep -A6 "lintOptions"
+          fi
 
       - name: Get dependencies
         run: flutter pub get
