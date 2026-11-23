@@ -1,621 +1,1128 @@
-name: Build Trading Journal APK
+name: Build Trading Journal APK (Native)
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
 
-      - uses: subosito/flutter-action@v2
+      - uses: gradle/actions/setup-gradle@v4
         with:
-          channel: 'stable'
-          cache: true
+          gradle-version: '8.9'
 
-      - name: Create Flutter project
-        run: flutter create --no-pub --org com.projournal --project-name trading_journal --platforms android .
-
-      - name: Write pubspec.yaml
+      - name: Scaffold project
         run: |
-          cat > pubspec.yaml << 'PUBSPEC_EOF'
-          name: trading_journal
-          description: Professional Trading Journal
-          publish_to: 'none'
-          version: 1.0.0+1
+          mkdir -p app/src/main/java/com/projournal/trading
+          mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/xml
 
-          environment:
-            sdk: '>=3.4.0 <4.0.0'
+          cat > settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositories { google(); mavenCentral() } }
+          rootProject.name = "TradingJournal"
+          include ':app'
+          EOF
 
-          dependencies:
-            flutter:
-              sdk: flutter
-            google_sign_in: ^6.2.1
-            googleapis: ^13.2.0
-            http: ^1.2.0
-            intl: ^0.19.0
-            fl_chart: ^0.69.0
-            shared_preferences: ^2.3.2
-            path_provider: ^2.1.4
-            share_plus: ^10.0.2
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+              id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
+          }
+          EOF
 
-          dev_dependencies:
-            flutter_test:
-              sdk: flutter
-            flutter_lints: ^3.0.0
-            flutter_launcher_icons: ^0.14.1
+          cat > gradle.properties <<'EOF'
+          android.useAndroidX=true
+          org.gradle.jvmargs=-Xmx2048m
+          android.nonTransitiveRClass=false
+          EOF
 
-          flutter_launcher_icons:
-            android: "launcher_icon"
-            ios: false
-            image_path: "assets/icon/app_icon.png"
-            min_sdk_android: 21
-            adaptive_icon_background: "#0F172A"
-            adaptive_icon_foreground: "assets/icon/app_icon.png"
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+          android {
+              namespace 'com.projournal.trading'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "com.projournal.trading"
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+              buildTypes {
+                  release {
+                      minifyEnabled true
+                      shrinkResources true
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                  }
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+              kotlinOptions { jvmTarget = '17' }
+          }
+          dependencies {
+              implementation 'androidx.core:core-ktx:1.13.1'
+              implementation 'androidx.appcompat:appcompat:1.7.0'
+              implementation 'com.google.android.material:material:1.12.0'
+          }
+          EOF
 
-          flutter:
-            uses-material-design: true
-          PUBSPEC_EOF
+          cat > app/proguard-rules.pro <<'EOF'
+          -keep class com.projournal.trading.** { *; }
+          EOF
 
-      - name: Generate professional app icon
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:label="Trading Journal"
+                  android:icon="@mipmap/ic_launcher"
+                  android:roundIcon="@mipmap/ic_launcher_round"
+                  android:theme="@style/Theme.TradingJournal"
+                  android:allowBackup="true">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+                  <activity android:name=".AddTradeActivity" android:exported="false"
+                      android:theme="@style/Theme.TradingJournal" />
+                  <activity android:name=".SettingsActivity" android:exported="false"
+                      android:theme="@style/Theme.TradingJournal" />
+              </application>
+          </manifest>
+          EOF
+
+          cat > app/src/main/res/values/themes.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="Theme.TradingJournal" parent="Theme.Material3.Light.NoActionBar">
+                  <item name="colorPrimary">#6366F1</item>
+                  <item name="colorOnPrimary">#FFFFFF</item>
+                  <item name="colorSecondary">#8B5CF6</item>
+                  <item name="colorSurface">#FFFFFF</item>
+                  <item name="colorOnSurface">#0F172A</item>
+                  <item name="android:windowBackground">#F8FAFC</item>
+                  <item name="android:statusBarColor">#F8FAFC</item>
+                  <item name="android:windowLightStatusBar">true</item>
+              </style>
+          </resources>
+          EOF
+
+      - name: Generate app icon
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq imagemagick
-          mkdir -p assets/icon
-          magick -size 1024x1024 xc:'#0F172A' \
-            -fill '#1E293B' -draw "roundrectangle 80,80 944,944 120,120" \
-            -fill none -stroke '#10B981' -strokewidth 60 \
-            -draw "stroke-linecap round stroke-linejoin round polyline 250,720 420,540 580,620 760,420 880,300" \
-            -fill '#3B82F6' -stroke none \
-            -draw "circle 880,300 880,250" \
-            assets/icon/app_icon.png
-          ls -lh assets/icon/app_icon.png
+          sudo apt-get install -y -qq python3-pil
 
-      - name: Write main.dart
-        run: |
-          cat > lib/main.dart << 'DART_EOF'
-          import 'dart:convert';
-          import 'dart:io';
-          import 'package:flutter/material.dart';
-          import 'package:fl_chart/fl_chart.dart';
-          import 'package:google_sign_in/google_sign_in.dart';
-          import 'package:googleapis/drive/v3.dart' as drive;
-          import 'package:http/http.dart' as http;
-          import 'package:intl/intl.dart';
-          import 'package:shared_preferences/shared_preferences.dart';
-          import 'package:share_plus/share_plus.dart';
-          import 'package:path_provider/path_provider.dart';
+          python3 <<'PYEOF'
+          import os
+          from PIL import Image, ImageDraw, ImageFont
 
-          void main() => runApp(const TradingApp());
+          sizes = {'mdpi':48,'hdpi':72,'xhdpi':96,'xxhdpi':144,'xxxhdpi':192}
+          TOP, BOTTOM = (99,102,241), (139,92,246)
 
-          class Trade {
-            final String id, pair, direction, date, notes, account;
-            final double entry, exit, qty;
-            Trade({required this.id, required this.pair, required this.direction,
-              required this.entry, required this.exit, required this.qty,
-              required this.date, required this.notes, required this.account});
-            double get pnl => direction == 'LONG' ? (exit - entry) * qty : (entry - exit) * qty;
-            Map<String, dynamic> toJson() => {'id': id, 'pair': pair, 'direction': direction,
-              'entry': entry, 'exit': exit, 'qty': qty, 'date': date, 'notes': notes, 'account': account, 'pnl': pnl};
-            factory Trade.fromJson(Map<String, dynamic> j) => Trade(
-              id: j['id'] as String, pair: j['pair'] as String, direction: j['direction'] as String,
-              entry: (j['entry'] as num).toDouble(), exit: (j['exit'] as num).toDouble(),
-              qty: (j['qty'] as num).toDouble(), date: j['date'] as String,
-              notes: j['notes'] as String? ?? '', account: j['account'] as String? ?? 'Default');
-          }
-
-          class Storage {
-            static const _k = 'trades_v1';
-            static Future<List<Trade>> load() async {
-              final p = await SharedPreferences.getInstance();
-              final r = p.getString(_k);
-              if (r == null) return [];
-              return (jsonDecode(r) as List).map((e) => Trade.fromJson(e as Map<String, dynamic>)).toList();
-            }
-            static Future<void> save(List<Trade> t) async {
-              final p = await SharedPreferences.getInstance();
-              await p.setString(_k, jsonEncode(t.map((e) => e.toJson()).toList()));
-            }
-          }
-
-          class TradingApp extends StatelessWidget {
-            const TradingApp({super.key});
-            @override
-            Widget build(BuildContext c) => MaterialApp(
-              title: 'Pro Trading Journal',
-              debugShowCheckedModeBanner: false,
-              theme: ThemeData(useMaterial3: true,
-                colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3B82F6), brightness: Brightness.dark)),
-              home: const HomeScreen());
-          }
-
-          class HomeScreen extends StatefulWidget {
-            const HomeScreen({super.key});
-            @override
-            State<HomeScreen> createState() => _HomeScreenState();
-          }
-
-          class _HomeScreenState extends State<HomeScreen> {
-            List<Trade> _trades = [];
-            int _tab = 0;
-            bool _uploading = false;
-
-            @override
-            void initState() {
-              super.initState();
-              _load();
-            }
-
-            Future<void> _load() async {
-              final loaded = await Storage.load();
-              if (!mounted) return;
-              setState(() => _trades = loaded);
-            }
-
-            double get totalPnl => _trades.fold(0.0, (s, t) => s + t.pnl);
-
-            double get winRate =>
-                _trades.isEmpty ? 0 : (_trades.where((t) => t.pnl > 0).length / _trades.length) * 100;
-
-            double get profitFactor {
-              final gp = _trades.where((t) => t.pnl > 0).fold(0.0, (s, t) => s + t.pnl);
-              final gl = _trades.where((t) => t.pnl < 0).fold(0.0, (s, t) => s + t.pnl.abs());
-              return gl == 0 ? (gp > 0 ? double.infinity : 0) : gp / gl;
-            }
-
-            double get avgWin {
-              final w = _trades.where((t) => t.pnl > 0).toList();
-              return w.isEmpty ? 0 : w.fold(0.0, (s, t) => s + t.pnl) / w.length;
-            }
-
-            double get avgLoss {
-              final l = _trades.where((t) => t.pnl < 0).toList();
-              return l.isEmpty ? 0 : l.fold(0.0, (s, t) => s + t.pnl) / l.length;
-            }
-
-            Future<void> _exportDrive() async {
-              if (_trades.isEmpty) { _snack('No trades to export'); return; }
-              setState(() => _uploading = true);
-              try {
-                final s = GoogleSignIn(scopes: ['https://www.googleapis.com/auth/drive.file']);
-                final a = await s.signIn();
-                if (a == null) { setState(() => _uploading = false); return; }
-                final auth = await a.authentication;
-                final api = drive.DriveApi(_GClient(auth.accessToken!));
-                final json = jsonEncode(_trades.map((t) => t.toJson()).toList());
-                final name = 'trading_journal_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.json';
-                final f = drive.File()..name = name..mimeType = 'application/json';
-                final m = drive.Media(Stream.value(utf8.encode(json)), utf8.encode(json).length);
-                await api.files.create(f, uploadMedia: m);
-                _snack('Uploaded to Google Drive');
-              } catch (e) {
-                _snack('Failed: $e');
-              } finally {
-                if (mounted) setState(() => _uploading = false);
-              }
-            }
-
-            Future<void> _exportLocal() async {
-              if (_trades.isEmpty) { _snack('No trades'); return; }
-              final json = const JsonEncoder.withIndent('  ').convert(_trades.map((t) => t.toJson()).toList());
-              final d = await getTemporaryDirectory();
-              final f = File('${d.path}/trading_journal.json');
-              await f.writeAsString(json);
-              await Share.shareXFiles([XFile(f.path)], text: 'Trading Journal Export');
-            }
-
-            void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
-
-            @override
-            Widget build(BuildContext c) => Scaffold(
-              appBar: AppBar(title: Text(['Trades', 'Analytics', 'Settings'][_tab])),
-              body: [_tradesTab(), _analyticsTab(c), _settingsTab()][_tab],
-              bottomNavigationBar: NavigationBar(
-                selectedIndex: _tab,
-                onDestinationSelected: (i) => setState(() => _tab = i),
-                destinations: const [
-                  NavigationDestination(icon: Icon(Icons.list), label: 'Trades'),
-                  NavigationDestination(icon: Icon(Icons.insights), label: 'Analytics'),
-                  NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
-                ]),
-              floatingActionButton: _tab == 0
-                  ? FloatingActionButton.extended(
-                      onPressed: () async {
-                        final t = await Navigator.push<Trade>(
-                          c, MaterialPageRoute(builder: (_) => const AddTradeScreen()));
-                        if (t != null) {
-                          setState(() => _trades.add(t));
-                          await Storage.save(_trades);
-                        }
-                      },
-                      icon: const Icon(Icons.add),
-                      label: const Text('New Trade'))
-                  : null);
-
-            Widget _tradesTab() {
-              if (_trades.isEmpty) {
-                return const Center(
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.show_chart, size: 80, color: Colors.grey),
-                    SizedBox(height: 12),
-                    Text('No trades yet', style: TextStyle(fontSize: 18, color: Colors.grey)),
-                    SizedBox(height: 6),
-                    Text('Tap + to add your first trade', style: TextStyle(color: Colors.grey))
-                  ]));
-              }
-              final sorted = _trades.reversed.toList();
-              return ListView.builder(
-                padding: const EdgeInsets.all(12),
-                itemCount: sorted.length,
-                itemBuilder: (_, i) {
-                  final t = sorted[i];
-                  final win = t.pnl >= 0;
-                  final oi = _trades.length - 1 - i;
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: win ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
-                        child: Icon(win ? Icons.trending_up : Icons.trending_down,
-                            color: win ? Colors.green : Colors.red)),
-                      title: Text('${t.pair} - ${t.direction}',
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('${t.date} - ${t.account}\nEntry ${t.entry} to ${t.exit} - Qty ${t.qty}',
-                          style: const TextStyle(fontSize: 11)),
-                      isThreeLine: true,
-                      trailing: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text('${win ? '+' : ''}\$${t.pnl.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                  color: win ? Colors.greenAccent : Colors.redAccent,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14)),
-                          const SizedBox(height: 6),
-                          GestureDetector(
-                            onTap: () async {
-                              setState(() => _trades.removeAt(oi));
-                              await Storage.save(_trades);
-                            },
-                            child: const Icon(Icons.delete_outline, size: 18, color: Colors.grey),
-                          )
-                        ])));
-                });
-            }
-
-            Widget _analyticsTab(BuildContext c) {
-              final sorted = [..._trades]..sort((a, b) => a.date.compareTo(b.date));
-              double run = 0;
-              final spots = <FlSpot>[];
-              for (var i = 0; i < sorted.length; i++) {
-                run += sorted[i].pnl;
-                spots.add(FlSpot(i.toDouble(), run));
-              }
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(12),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 1.7,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    children: [
-                      _stat('Total P&L', '\$${totalPnl.toStringAsFixed(2)}',
-                          totalPnl >= 0 ? Colors.green : Colors.red),
-                      _stat('Win Rate', '${winRate.toStringAsFixed(1)}%', Colors.blue),
-                      _stat('Profit Factor',
-                          profitFactor.isFinite ? profitFactor.toStringAsFixed(2) : 'inf',
-                          Colors.orange),
-                      _stat('Total Trades', '${_trades.length}', Colors.purple),
-                      _stat('Avg Win', '\$${avgWin.toStringAsFixed(2)}', Colors.green),
-                      _stat('Avg Loss', '\$${avgLoss.toStringAsFixed(2)}', Colors.red),
-                    ]),
-                  const SizedBox(height: 20),
-                  const Text('Equity Curve',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  Container(
-                    height: 220,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                        color: Theme.of(c).cardColor, borderRadius: BorderRadius.circular(12)),
-                    child: spots.isEmpty
-                        ? const Center(child: Text('No data', style: TextStyle(color: Colors.grey)))
-                        : LineChart(LineChartData(
-                            gridData: const FlGridData(show: true, drawVerticalLine: false),
-                            titlesData: const FlTitlesData(show: false),
-                            borderData: FlBorderData(show: false),
-                            lineBarsData: [
-                              LineChartBarData(
-                                  spots: spots,
-                                  isCurved: true,
-                                  color: Colors.blueAccent,
-                                  barWidth: 3,
-                                  dotData: const FlDotData(show: false),
-                                  belowBarData: BarAreaData(
-                                      show: true,
-                                      color: Colors.blueAccent.withOpacity(0.15)))
-                            ])),
-                  )
-                ]));
-            }
-
-            Widget _stat(String l, String v, Color c) => Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                      color: c.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: c.withOpacity(0.3))),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(l, style: TextStyle(fontSize: 12, color: c.withOpacity(0.9))),
-                        const SizedBox(height: 6),
-                        Text(v,
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: c))
-                      ]));
-
-            Widget _settingsTab() => ListView(padding: const EdgeInsets.all(16), children: [
-                  const Text('Export Data', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  Card(
-                      child: ListTile(
-                          leading: const Icon(Icons.cloud_upload, color: Colors.blue),
-                          title: const Text('Export to Google Drive'),
-                          subtitle: const Text('Upload JSON to your Drive'),
-                          trailing: _uploading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2))
-                              : const Icon(Icons.chevron_right),
-                          onTap: _uploading ? null : _exportDrive)),
-                  Card(
-                      child: ListTile(
-                          leading: const Icon(Icons.share, color: Colors.green),
-                          title: const Text('Export / Share File'),
-                          subtitle: const Text('Save JSON locally or share'),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: _exportLocal)),
-                  const SizedBox(height: 24),
-                  const Text('About', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  const Card(
-                      child: ListTile(
-                          leading: Icon(Icons.info, color: Colors.orange),
-                          title: Text('Pro Trading Journal'),
-                          subtitle: Text('v1.0.0 - Built with Flutter'))),
-                ]);
-          }
-
-          class AddTradeScreen extends StatefulWidget {
-            const AddTradeScreen({super.key});
-            @override
-            State<AddTradeScreen> createState() => _AddTradeScreenState();
-          }
-
-          class _AddTradeScreenState extends State<AddTradeScreen> {
-            final _k = GlobalKey<FormState>();
-            final _pair = TextEditingController(),
-                _entry = TextEditingController(),
-                _exit = TextEditingController(),
-                _qty = TextEditingController(),
-                _notes = TextEditingController(),
-                _acc = TextEditingController(text: 'Default');
-            String _dir = 'LONG';
-            DateTime _date = DateTime.now();
-
-            @override
-            Widget build(BuildContext c) => Scaffold(
-                  appBar: AppBar(title: const Text('New Trade')),
-                  body: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Form(
-                          key: _k,
-                          child: Column(children: [
-                            TextFormField(
-                                controller: _pair,
-                                textCapitalization: TextCapitalization.characters,
-                                decoration: const InputDecoration(
-                                    labelText: 'Pair (e.g. BTC/USDT)',
-                                    border: OutlineInputBorder()),
-                                validator: (v) =>
-                                    v == null || v.isEmpty ? 'Required' : null),
-                            const SizedBox(height: 12),
-                            SegmentedButton<String>(segments: const [
-                              ButtonSegment(
-                                  value: 'LONG',
-                                  label: Text('LONG'),
-                                  icon: Icon(Icons.trending_up)),
-                              ButtonSegment(
-                                  value: 'SHORT',
-                                  label: Text('SHORT'),
-                                  icon: Icon(Icons.trending_down))
-                            ], selected: {
-                              _dir
-                            }, onSelectionChanged: (s) => setState(() => _dir = s.first)),
-                            const SizedBox(height: 12),
-                            Row(children: [
-                              Expanded(
-                                  child: TextFormField(
-                                      controller: _entry,
-                                      keyboardType: TextInputType.number,
-                                      decoration: const InputDecoration(
-                                          labelText: 'Entry', border: OutlineInputBorder()),
-                                      validator: (v) =>
-                                          double.tryParse(v ?? '') == null ? 'Invalid' : null)),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                  child: TextFormField(
-                                      controller: _exit,
-                                      keyboardType: TextInputType.number,
-                                      decoration: const InputDecoration(
-                                          labelText: 'Exit', border: OutlineInputBorder()),
-                                      validator: (v) =>
-                                          double.tryParse(v ?? '') == null ? 'Invalid' : null))
-                            ]),
-                            const SizedBox(height: 12),
-                            Row(children: [
-                              Expanded(
-                                  child: TextFormField(
-                                      controller: _qty,
-                                      keyboardType: TextInputType.number,
-                                      decoration: const InputDecoration(
-                                          labelText: 'Qty', border: OutlineInputBorder()),
-                                      validator: (v) =>
-                                          double.tryParse(v ?? '') == null ? 'Invalid' : null)),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                  child: InkWell(
-                                      onTap: () async {
-                                        final p = await showDatePicker(
-                                            context: c,
-                                            initialDate: _date,
-                                            firstDate: DateTime(2020),
-                                            lastDate: DateTime(2030));
-                                        if (p != null) setState(() => _date = p);
-                                      },
-                                      child: InputDecorator(
-                                          decoration: const InputDecoration(
-                                              labelText: 'Date', border: OutlineInputBorder()),
-                                          child: Text(DateFormat('yyyy-MM-dd').format(_date)))))
-                            ]),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                                controller: _acc,
-                                decoration: const InputDecoration(
-                                    labelText: 'Account', border: OutlineInputBorder())),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                                controller: _notes,
-                                maxLines: 3,
-                                decoration: const InputDecoration(
-                                    labelText: 'Notes (strategy, emotion...)',
-                                    border: OutlineInputBorder())),
-                            const SizedBox(height: 24),
-                            SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: FilledButton.icon(
-                                    onPressed: () {
-                                      if (!_k.currentState!.validate()) return;
-                                      Navigator.pop(
-                                          c,
-                                          Trade(
-                                              id: DateTime.now().millisecondsSinceEpoch.toString(),
-                                              pair: _pair.text.toUpperCase(),
-                                              direction: _dir,
-                                              entry: double.parse(_entry.text),
-                                              exit: double.parse(_exit.text),
-                                              qty: double.parse(_qty.text),
-                                              date: DateFormat('yyyy-MM-dd').format(_date),
-                                              notes: _notes.text,
-                                              account: _acc.text));
-                                    },
-                                    icon: const Icon(Icons.check),
-                                    label: const Text('Save Trade'))),
-                          ]))));
-          }
-
-          class _GClient extends http.BaseClient {
-            final String _t;
-            final http.Client _c = http.Client();
-            _GClient(this._t);
-            @override
-            Future<http.StreamedResponse> send(http.BaseRequest r) {
-              r.headers['Authorization'] = 'Bearer $_t';
-              return _c.send(r);
-            }
-          }
-          DART_EOF
-
-      - name: Add INTERNET permission to Android manifest
-        run: |
-          sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <application#' android/app/src/main/AndroidManifest.xml
-          head -5 android/app/src/main/AndroidManifest.xml
-
-      # 👇 এই স্টেপটি এখন Kotlin DSL এবং Groovy DSL দুটোই হ্যান্ডেল করবে 👇
-      - name: Disable Android Lint (bypass google_sign_in bug)
-        run: |
-          echo "=== Detecting build file format ==="
-          find android -name "build.gradle*" -type f
-
-          python3 << 'PYEOF'
-          import os, re, sys
-
-          def patch(path, pattern, insertion):
-              content = open(path).read()
-              if 'abortOnError' in content:
-                  print(f"Already patched: {path}")
-                  return True
-              new_content, n = re.subn(pattern, lambda m: m.group(0) + '\n' + insertion, content, count=1, flags=re.MULTILINE)
-              if n == 0:
-                  print(f"Pattern not found in {path}")
-                  return False
-              open(path, 'w').write(new_content)
-              print(f"Patched: {path}")
-              return True
-
-          kts = "android/app/build.gradle.kts"
-          groovy = "android/app/build.gradle"
-
-          if os.path.exists(kts):
-              ins = '''    lint {
-                      checkReleaseBuilds = false
-                      abortOnError = false
-                      disable += "EasterEgg"
-                      disable += "StopShip"
-                  }'''
-              if patch(kts, r'^android\s*\{', ins):
-                  sys.exit(0)
-
-          if os.path.exists(groovy):
-              ins = '''    lintOptions {
-                      checkReleaseBuilds false
-                      abortOnError false
-                      disable 'EasterEgg', 'StopShip'
-                  }'''
-              if patch(groovy, r'^android\s*\{', ins):
-                  sys.exit(0)
-
-          print("ERROR: Could not patch build file")
-          sys.exit(1)
+          for dpi, size in sizes.items():
+              out = f'app/src/main/res/mipmap-{dpi}'
+              os.makedirs(out, exist_ok=True)
+              img = Image.new('RGBA', (size,size), (0,0,0,0))
+              d = ImageDraw.Draw(img)
+              # gradient background
+              for y in range(size):
+                  t = y/max(size-1,1)
+                  r = int(TOP[0]+(BOTTOM[0]-TOP[0])*t)
+                  g = int(TOP[1]+(BOTTOM[1]-TOP[1])*t)
+                  b = int(TOP[2]+(BOTTOM[2]-TOP[2])*t)
+                  d.line([(0,y),(size,y)], fill=(r,g,b,255))
+              # white chart line
+              lw = max(size//24, 2)
+              pts = [(size*0.2, size*0.72), (size*0.4, size*0.55),
+                     (size*0.6, size*0.62), (size*0.8, size*0.35)]
+              d.line(pts, fill=(255,255,255,255), width=lw, joint='curve')
+              # dot at end
+              ex, ey = pts[-1]
+              r = max(size//16, 3)
+              d.ellipse([ex-r, ey-r, ex+r, ey+r], fill=(255,255,255,255))
+              # rounded mask
+              mask = Image.new('L', (size,size), 0)
+              ImageDraw.Draw(mask).rounded_rectangle(
+                  [(0,0),(size-1,size-1)], radius=max(size//6,2), fill=255)
+              img.putalpha(mask)
+              img.save(f'{out}/ic_launcher.png')
+              img.save(f'{out}/ic_launcher_round.png')
+          print("Icons generated")
           PYEOF
+          ls -la app/src/main/res/mipmap-mdpi/
 
-          echo "=== Verify patch ==="
-          if [ -f android/app/build.gradle.kts ]; then
-            head -60 android/app/build.gradle.kts | grep -A6 "lint"
-          fi
-          if [ -f android/app/build.gradle ]; then
-            head -60 android/app/build.gradle | grep -A6 "lintOptions"
-          fi
+      - name: Write Trade model + storage
+        run: |
+          cat > app/src/main/java/com/projournal/trading/Trade.kt <<'EOF'
+          package com.projournal.trading
 
-      - name: Get dependencies
-        run: flutter pub get
+          import org.json.JSONArray
+          import org.json.JSONObject
+          import java.util.UUID
 
-      - name: Generate launcher icons
-        run: dart run flutter_launcher_icons
+          data class Trade(
+              val id: String = UUID.randomUUID().toString(),
+              val pair: String,
+              val direction: String,
+              val entry: Double,
+              val exit: Double,
+              val qty: Double,
+              val date: Long,
+              val notes: String = "",
+              val account: String = "Default"
+          ) {
+              val pnl: Double get() =
+                  if (direction == "LONG") (exit - entry) * qty else (entry - exit) * qty
 
-      - name: Build release APK
-        run: flutter build apk --release
+              fun toJson(): JSONObject = JSONObject().apply {
+                  put("id", id); put("pair", pair); put("direction", direction)
+                  put("entry", entry); put("exit", exit); put("qty", qty)
+                  put("date", date); put("notes", notes); put("account", account)
+              }
 
-      - name: Upload APK artifact
+              companion object {
+                  fun fromJson(o: JSONObject) = Trade(
+                      id = o.optString("id", UUID.randomUUID().toString()),
+                      pair = o.getString("pair"),
+                      direction = o.getString("direction"),
+                      entry = o.getDouble("entry"),
+                      exit = o.getDouble("exit"),
+                      qty = o.getDouble("qty"),
+                      date = o.getLong("date"),
+                      notes = o.optString("notes", ""),
+                      account = o.optString("account", "Default")
+                  )
+              }
+          }
+          EOF
+
+          cat > app/src/main/java/com/projournal/trading/TradeStore.kt <<'EOF'
+          package com.projournal.trading
+
+          import android.content.Context
+          import org.json.JSONArray
+          import java.io.File
+
+          class TradeStore(ctx: Context) {
+              private val file = File(ctx.applicationContext.filesDir, "trades.json")
+              private val lock = Any()
+
+              fun all(): List<Trade> = synchronized(lock) {
+                  if (!file.exists()) return emptyList()
+                  try {
+                      val arr = JSONArray(file.readText())
+                      (0 until arr.length()).map { Trade.fromJson(arr.getJSONObject(it)) }
+                  } catch (e: Exception) { emptyList() }
+              }
+
+              fun add(t: Trade) = synchronized(lock) {
+                  val list = all().toMutableList(); list.add(t); save(list)
+              }
+
+              fun remove(id: String) = synchronized(lock) {
+                  save(all().filter { it.id != id })
+              }
+
+              fun clear() = synchronized(lock) { file.delete() }
+
+              private fun save(list: List<Trade>) {
+                  val arr = JSONArray()
+                  list.forEach { arr.put(it.toJson()) }
+                  file.writeText(arr.toString())
+              }
+          }
+          EOF
+
+      - name: Write Stats + Chart view
+        run: |
+          cat > app/src/main/java/com/projournal/trading/Stats.kt <<'EOF'
+          package com.projournal.trading
+
+          object Stats {
+              fun totalPnl(trades: List<Trade>) = trades.sumOf { it.pnl }
+              fun winRate(trades: List<Trade>): Double =
+                  if (trades.isEmpty()) 0.0
+                  else trades.count { it.pnl > 0 } * 100.0 / trades.size
+              fun profitFactor(trades: List<Trade>): Double {
+                  val gp = trades.filter { it.pnl > 0 }.sumOf { it.pnl }
+                  val gl = trades.filter { it.pnl < 0 }.sumOf { -it.pnl }
+                  return if (gl == 0.0) (if (gp > 0) 99.99 else 0.0) else gp / gl
+              }
+              fun avgWin(trades: List<Trade>): Double {
+                  val w = trades.filter { it.pnl > 0 }
+                  return if (w.isEmpty()) 0.0 else w.sumOf { it.pnl } / w.size
+              }
+              fun avgLoss(trades: List<Trade>): Double {
+                  val l = trades.filter { it.pnl < 0 }
+                  return if (l.isEmpty()) 0.0 else l.sumOf { it.pnl } / l.size
+              }
+              fun equityCurve(trades: List<Trade>): List<Double> {
+                  val sorted = trades.sortedBy { it.date }
+                  val result = mutableListOf<Double>()
+                  var run = 0.0
+                  for (t in sorted) { run += t.pnl; result.add(run) }
+                  return result
+              }
+          }
+          EOF
+
+          cat > app/src/main/java/com/projournal/trading/EquityChartView.kt <<'EOF'
+          package com.projournal.trading
+
+          import android.content.Context
+          import android.graphics.*
+          import android.view.View
+
+          class EquityChartView(ctx: Context) : View(ctx) {
+              private var data: List<Double> = emptyList()
+              private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                  color = Color.parseColor("#6366F1"); strokeWidth = 6f
+                  style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
+                  strokeJoin = Paint.Join.ROUND
+              }
+              private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                  color = Color.parseColor("#6366F1"); style = Paint.Style.FILL
+              }
+              private val dotBorder = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                  color = Color.WHITE; style = Paint.Style.FILL
+              }
+              private val gridPaint = Paint().apply {
+                  color = Color.parseColor("#E2E8F0"); strokeWidth = 2f
+              }
+              private val zeroPaint = Paint().apply {
+                  color = Color.parseColor("#CBD5E1"); strokeWidth = 3f
+                  pathEffect = DashPathEffect(floatArrayOf(15f, 15f), 0f)
+              }
+              private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                  color = Color.parseColor("#94A3B8"); textSize = 30f
+                  textAlign = Paint.Align.CENTER
+              }
+
+              fun setData(d: List<Double>) { data = d; invalidate() }
+
+              override fun onDraw(canvas: Canvas) {
+                  super.onDraw(canvas)
+                  if (data.isEmpty()) {
+                      canvas.drawText("কোনো ডেটা নেই", width/2f, height/2f, textPaint)
+                      return
+                  }
+                  if (data.size == 1) {
+                      canvas.drawText("আরও ট্রেড যোগ করুন", width/2f, height/2f, textPaint)
+                      return
+                  }
+                  val w = width.toFloat(); val h = height.toFloat(); val p = 40f
+                  val minV = minOf(data.min(), 0.0)
+                  val maxV = maxOf(data.max(), 0.0)
+                  val range = (maxV - minV).coerceAtLeast(1.0)
+                  fun xf(i: Int) = p + (w - 2*p) * i / (data.size - 1).toFloat()
+                  fun yf(v: Double) = h - p - ((v - minV) / range * (h - 2*p)).toFloat()
+
+                  for (i in 0..4) {
+                      val y = p + (h - 2*p) * i / 4f
+                      canvas.drawLine(p, y, w - p, y, gridPaint)
+                  }
+                  if (minV < 0 && maxV > 0) {
+                      val y = yf(0.0)
+                      canvas.drawLine(p, y, w - p, y, zeroPaint)
+                  }
+
+                  val path = Path().apply {
+                      moveTo(xf(0), yf(data[0]))
+                      for (i in 1 until data.size) lineTo(xf(i), yf(data[i]))
+                  }
+                  val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                      shader = LinearGradient(0f, p, 0f, h - p,
+                          Color.parseColor("#506366F1"),
+                          Color.parseColor("#006366F1"),
+                          Shader.TileMode.CLAMP)
+                      style = Paint.Style.FILL
+                  }
+                  val fillPath = Path(path).apply {
+                      lineTo(xf(data.size - 1), h - p)
+                      lineTo(xf(0), h - p)
+                      close()
+                  }
+                  canvas.drawPath(fillPath, fillPaint)
+                  canvas.drawPath(path, linePaint)
+
+                  for (i in data.indices) {
+                      val cx = xf(i); val cy = yf(data[i])
+                      canvas.drawCircle(cx, cy, 9f, dotBorder)
+                      canvas.drawCircle(cx, cy, 6f, dotPaint)
+                  }
+              }
+          }
+          EOF
+
+      - name: Write MainActivity
+        run: |
+          cat > app/src/main/java/com/projournal/trading/MainActivity.kt <<'EOF'
+          package com.projournal.trading
+
+          import android.content.Intent
+          import android.graphics.Color
+          import android.graphics.Typeface
+          import android.graphics.drawable.GradientDrawable
+          import android.os.Bundle
+          import android.view.Gravity
+          import android.widget.*
+          import androidx.appcompat.app.AlertDialog
+          import androidx.appcompat.app.AppCompatActivity
+          import androidx.activity.result.contract.ActivityResultContracts
+          import com.google.android.material.card.MaterialCardView
+          import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+          import java.text.SimpleDateFormat
+          import java.util.*
+
+          class MainActivity : AppCompatActivity() {
+              private lateinit var store: TradeStore
+              private lateinit var heroValue: TextView
+              private lateinit var heroSub: TextView
+              private lateinit var statsRow1: LinearLayout
+              private lateinit var statsRow2: LinearLayout
+              private lateinit var chartView: EquityChartView
+              private lateinit var recentList: LinearLayout
+
+              private val addLauncher = registerForActivityResult(
+                  ActivityResultContracts.StartActivityForResult()) { refreshUi() }
+
+              override fun onCreate(b: Bundle?) {
+                  super.onCreate(b)
+                  store = TradeStore(this)
+                  buildUi()
+              }
+
+              override fun onResume() { super.onResume(); refreshUi() }
+
+              private fun buildUi() {
+                  val root = ScrollView(this).apply { setBackgroundColor(Color.parseColor("#F8FAFC")) }
+                  val col = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      setPadding(40, 60, 40, 200)
+                  }
+
+                  // Header
+                  val header = LinearLayout(this).apply {
+                      orientation = LinearLayout.HORIZONTAL
+                      gravity = Gravity.CENTER_VERTICAL
+                      setPadding(0, 0, 0, 32)
+                  }
+                  val hCol = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
+                  }
+                  hCol.addView(TextView(this).apply {
+                      text = "Trading Journal"; textSize = 24f
+                      setTextColor(Color.parseColor("#0F172A"))
+                      setTypeface(typeface, Typeface.BOLD)
+                  })
+                  hCol.addView(TextView(this).apply {
+                      text = "আপনার ট্রেডের হিসাব"; textSize = 12f
+                      setTextColor(Color.parseColor("#64748B"))
+                      setPadding(0, 4, 0, 0)
+                  })
+                  header.addView(hCol)
+                  header.addView(TextView(this).apply {
+                      text = "⚙️"; textSize = 24f
+                      setPadding(24, 12, 0, 12)
+                      setOnClickListener { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) }
+                  })
+
+                  // Hero card
+                  val hero = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      setPadding(48, 40, 48, 40)
+                      background = GradientDrawable(
+                          GradientDrawable.Orientation.TL_BR,
+                          intArrayOf(Color.parseColor("#6366F1"),
+                                      Color.parseColor("#8B5CF6"),
+                                      Color.parseColor("#EC4899"))
+                      ).apply { cornerRadius = 52f }
+                      elevation = 14f
+                      layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 32 }
+                  }
+                  hero.addView(TextView(this).apply {
+                      text = "মোট লাভ/ক্ষতি"; textSize = 12f
+                      setTextColor(Color.WHITE); alpha = 0.85f
+                      letterSpacing = 0.08f
+                  })
+                  heroValue = TextView(this).apply {
+                      textSize = 36f; setTextColor(Color.WHITE)
+                      setTypeface(typeface, Typeface.BOLD)
+                      setPadding(0, 14, 0, 6)
+                  }
+                  hero.addView(heroValue)
+                  heroSub = TextView(this).apply {
+                      textSize = 13f; setTextColor(Color.WHITE); alpha = 0.9f
+                  }
+                  hero.addView(heroSub)
+
+                  // Stats
+                  statsRow1 = LinearLayout(this).apply {
+                      orientation = LinearLayout.HORIZONTAL
+                      layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 8 }
+                  }
+                  statsRow2 = LinearLayout(this).apply {
+                      orientation = LinearLayout.HORIZONTAL
+                      layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 32 }
+                  }
+
+                  // Chart section
+                  val chartSection = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      background = GradientDrawable().apply {
+                          cornerRadius = 40f; setColor(Color.WHITE)
+                          setStroke(2, Color.parseColor("#E2E8F0"))
+                      }
+                      setPadding(36, 32, 36, 32)
+                      elevation = 3f
+                      layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 32 }
+                  }
+                  chartSection.addView(TextView(this).apply {
+                      text = "📈 ইকুইটি কার্ভ"; textSize = 16f
+                      setTextColor(Color.parseColor("#0F172A"))
+                      setTypeface(typeface, Typeface.BOLD)
+                      setPadding(0, 0, 0, 20)
+                  })
+                  chartView = EquityChartView(this).apply {
+                      layoutParams = LinearLayout.LayoutParams(-1, 420)
+                  }
+                  chartSection.addView(chartView)
+
+                  // Recent trades
+                  val recentSection = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      layoutParams = LinearLayout.LayoutParams(-1, -2)
+                  }
+                  recentSection.addView(TextView(this).apply {
+                      text = "সাম্প্রতিক ট্রেড"; textSize = 16f
+                      setTextColor(Color.parseColor("#0F172A"))
+                      setTypeface(typeface, Typeface.BOLD)
+                      setPadding(8, 0, 0, 16)
+                  })
+                  recentList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                  recentSection.addView(recentList)
+
+                  col.addView(header)
+                  col.addView(hero)
+                  col.addView(statsRow1)
+                  col.addView(statsRow2)
+                  col.addView(chartSection)
+                  col.addView(recentSection)
+                  root.addView(col)
+                  setContentView(root)
+
+                  // FAB
+                  val fabWrap = FrameLayout(this)
+                  val fab = ExtendedFloatingActionButton(this).apply {
+                      text = "নতুন ট্রেড"
+                      setTextColor(Color.WHITE)
+                      setBackgroundColor(Color.parseColor("#6366F1"))
+                      setIconResource(android.R.drawable.ic_input_add)
+                      iconTint = android.content.res.ColorStateList.valueOf(Color.WHITE)
+                      layoutParams = FrameLayout.LayoutParams(-2, -2).apply {
+                          gravity = Gravity.BOTTOM or Gravity.END
+                          setMargins(0, 0, 40, 48)
+                      }
+                      setOnClickListener {
+                          addLauncher.launch(Intent(this@MainActivity, AddTradeActivity::class.java))
+                      }
+                  }
+                  fabWrap.addView(fab)
+                  val wrapParams = LinearLayout.LayoutParams(-1, -1)
+                  addContentView(fabWrap, wrapParams)
+              }
+
+              private fun refreshUi() {
+                  if (!::heroValue.isInitialized) return
+                  val trades = store.all()
+                  val pnl = Stats.totalPnl(trades)
+                  val wr = Stats.winRate(trades)
+                  val pf = Stats.profitFactor(trades)
+
+                  heroValue.text = (if (pnl >= 0) "+\$" else "-\$") +
+                          String.format(Locale.US, "%.2f", Math.abs(pnl))
+                  heroSub.text = "${trades.size}টি ট্রেড · জয়ের হার ${String.format(Locale.US, "%.1f", wr)}%"
+
+                  statsRow1.removeAllViews()
+                  statsRow2.removeAllViews()
+                  statsRow1.addView(statCard("জয়ের হার", "${String.format(Locale.US, "%.1f", wr)}%", "#10B981"))
+                  statsRow1.addView(statCard("প্রফিট ফ্যাক্টর", String.format(Locale.US, "%.2f", pf), "#F59E0B"))
+                  statsRow2.addView(statCard("গড় জয়", "\$${String.format(Locale.US, "%.1f", Stats.avgWin(trades))}", "#3B82F6"))
+                  statsRow2.addView(statCard("গড় ক্ষতি", "\$${String.format(Locale.US, "%.1f", Stats.avgLoss(trades))}", "#EF4444"))
+
+                  chartView.setData(Stats.equityCurve(trades))
+
+                  recentList.removeAllViews()
+                  if (trades.isEmpty()) {
+                      recentList.addView(TextView(this).apply {
+                          text = "এখনো কোনো ট্রেড নেই\n\nনিচের + বাটনে ট্যাপ করে শুরু করুন"
+                          textSize = 14f; gravity = Gravity.CENTER
+                          setTextColor(Color.parseColor("#94A3B8"))
+                          setPadding(0, 80, 0, 80)
+                      })
+                  } else {
+                      trades.sortedByDescending { it.date }.take(5).forEach { t ->
+                          recentList.addView(tradeRow(t))
+                      }
+                  }
+              }
+
+              private fun statCard(label: String, value: String, colorHex: String): MaterialCardView {
+                  val card = MaterialCardView(this).apply {
+                      radius = 32f; cardElevation = 3f
+                      setCardBackgroundColor(Color.WHITE)
+                      strokeWidth = 2
+                      strokeColor = Color.parseColor("#E2E8F0")
+                      layoutParams = LinearLayout.LayoutParams(0, -2).apply {
+                          weight = 1f
+                          setMargins(8, 8, 8, 8)
+                      }
+                  }
+                  val inner = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      setPadding(32, 28, 32, 28)
+                  }
+                  inner.addView(LinearLayout(this).apply {
+                      background = GradientDrawable().apply {
+                          cornerRadius = 8f; setColor(Color.parseColor(colorHex))
+                      }
+                      layoutParams = LinearLayout.LayoutParams(48, 8).apply { bottomMargin = 16 }
+                  })
+                  inner.addView(TextView(this).apply {
+                      text = value; textSize = 20f
+                      setTextColor(Color.parseColor("#0F172A"))
+                      setTypeface(typeface, Typeface.BOLD)
+                  })
+                  inner.addView(TextView(this).apply {
+                      text = label; textSize = 12f
+                      setTextColor(Color.parseColor("#64748B"))
+                      setPadding(0, 6, 0, 0)
+                  })
+                  card.addView(inner)
+                  return card
+              }
+
+              private fun tradeRow(t: Trade): MaterialCardView {
+                  val win = t.pnl >= 0
+                  val card = MaterialCardView(this).apply {
+                      radius = 28f; cardElevation = 2f
+                      setCardBackgroundColor(Color.WHITE)
+                      strokeWidth = 1
+                      strokeColor = Color.parseColor("#E2E8F0")
+                      layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 12 }
+                      isClickable = true; isFocusable = true
+                      setOnClickListener { showTradeDialog(t) }
+                  }
+                  val row = LinearLayout(this).apply {
+                      orientation = LinearLayout.HORIZONTAL
+                      gravity = Gravity.CENTER_VERTICAL
+                      setPadding(32, 28, 32, 28)
+                  }
+                  val iconBox = LinearLayout(this).apply {
+                      background = GradientDrawable().apply {
+                          shape = GradientDrawable.OVAL
+                          setColor(Color.parseColor(if (win) "#DCFCE7" else "#FEE2E2"))
+                      }
+                      layoutParams = LinearLayout.LayoutParams(96, 96).apply { rightMargin = 28 }
+                      gravity = Gravity.CENTER
+                  }
+                  iconBox.addView(TextView(this).apply {
+                      text = if (win) "📈" else "📉"; textSize = 32f; gravity = Gravity.CENTER
+                  })
+                  row.addView(iconBox)
+                  val col = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
+                  }
+                  col.addView(TextView(this).apply {
+                      text = "${t.pair} · ${t.direction}"; textSize = 15f
+                      setTextColor(Color.parseColor("#0F172A"))
+                      setTypeface(typeface, Typeface.BOLD)
+                  })
+                  col.addView(TextView(this).apply {
+                      text = "${SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(t.date))} · ${t.account}"
+                      textSize = 11f; setTextColor(Color.parseColor("#64748B"))
+                      setPadding(0, 4, 0, 0)
+                  })
+                  col.addView(TextView(this).apply {
+                      text = "Entry ${t.entry} → Exit ${t.exit}"
+                      textSize = 11f; setTextColor(Color.parseColor("#94A3B8"))
+                      setPadding(0, 2, 0, 0)
+                  })
+                  row.addView(col)
+                  row.addView(TextView(this).apply {
+                      text = (if (win) "+" else "-") + "\$" + String.format(Locale.US, "%.2f", Math.abs(t.pnl))
+                      textSize = 15f
+                      setTextColor(Color.parseColor(if (win) "#10B981" else "#EF4444"))
+                      setTypeface(typeface, Typeface.BOLD)
+                  })
+                  card.addView(row)
+                  return card
+              }
+
+              private fun showTradeDialog(t: Trade) {
+                  val dlg = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      setPadding(48, 32, 48, 0)
+                  }
+                  fun addLabel(l: String, v: String) {
+                      dlg.addView(TextView(this).apply {
+                          text = l; textSize = 12f
+                          setTextColor(Color.parseColor("#64748B"))
+                          setPadding(0, 12, 0, 2)
+                      })
+                      dlg.addView(TextView(this).apply {
+                          text = v; textSize = 15f
+                          setTextColor(Color.parseColor("#0F172A"))
+                          setTypeface(typeface, Typeface.BOLD)
+                      })
+                  }
+                  addLabel("পেয়ার", t.pair)
+                  addLabel("ডিরেকশন", t.direction)
+                  addLabel("এন্ট্রি → এক্সিট", "${t.entry} → ${t.exit}")
+                  addLabel("কোয়ান্টিটি", t.qty.toString())
+                  addLabel("P&L", (if (t.pnl >= 0) "+" else "") + "\$" + String.format(Locale.US, "%.2f", t.pnl))
+                  if (t.notes.isNotBlank()) addLabel("নোট", t.notes)
+
+                  AlertDialog.Builder(this)
+                      .setTitle("ট্রেড বিস্তারিত")
+                      .setView(dlg)
+                      .setPositiveButton("বন্ধ", null)
+                      .setNegativeButton("মুছুন") { _, _ ->
+                          store.remove(t.id); refreshUi()
+                      }.show()
+              }
+          }
+          EOF
+
+      - name: Write AddTradeActivity
+        run: |
+          cat > app/src/main/java/com/projournal/trading/AddTradeActivity.kt <<'EOF'
+          package com.projournal.trading
+
+          import android.app.DatePickerDialog
+          import android.graphics.Color
+          import android.graphics.Typeface
+          import android.graphics.drawable.GradientDrawable
+          import android.os.Bundle
+          import android.text.InputType
+          import android.view.Gravity
+          import android.widget.*
+          import androidx.appcompat.app.AppCompatActivity
+          import java.text.SimpleDateFormat
+          import java.util.*
+
+          class AddTradeActivity : AppCompatActivity() {
+              private var direction = "LONG"
+              private var selectedDate = System.currentTimeMillis()
+              private lateinit var longBtn: TextView
+              private lateinit var shortBtn: TextView
+              private lateinit var dateLabel: TextView
+
+              override fun onCreate(b: Bundle?) {
+                  super.onCreate(b)
+                  buildUi()
+              }
+
+              private fun buildUi() {
+                  val root = ScrollView(this).apply { setBackgroundColor(Color.parseColor("#F8FAFC")) }
+                  val col = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      setPadding(40, 60, 40, 40)
+                  }
+
+                  // Header
+                  val header = LinearLayout(this).apply {
+                      orientation = LinearLayout.HORIZONTAL
+                      gravity = Gravity.CENTER_VERTICAL
+                      setPadding(0, 0, 0, 32)
+                  }
+                  header.addView(TextView(this).apply {
+                      text = "‹"; textSize = 32f; setPadding(0, 0, 20, 8)
+                      setTextColor(Color.parseColor("#0F172A"))
+                      setOnClickListener { finish() }
+                  })
+                  header.addView(TextView(this).apply {
+                      text = "নতুন ট্রেড"; textSize = 22f
+                      setTextColor(Color.parseColor("#0F172A"))
+                      setTypeface(typeface, Typeface.BOLD)
+                  })
+
+                  // Form card
+                  val formCard = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      background = GradientDrawable().apply {
+                          cornerRadius = 40f; setColor(Color.WHITE)
+                          setStroke(2, Color.parseColor("#E2E8F0"))
+                      }
+                      setPadding(40, 36, 40, 36)
+                      elevation = 3f
+                  }
+
+                  fun label(t: String) = TextView(this).apply {
+                      text = t; textSize = 13f
+                      setTextColor(Color.parseColor("#0F172A"))
+                      setTypeface(typeface, Typeface.BOLD)
+                      setPadding(0, 20, 0, 10)
+                  }
+                  fun input(hint: String, inputType: Int = InputType.TYPE_CLASS_TEXT) =
+                      EditText(this).apply {
+                          this.hint = hint
+                          this.inputType = inputType
+                          setBackgroundColor(Color.parseColor("#F1F5F9"))
+                          setPadding(32, 28, 32, 28)
+                          textSize = 15f
+                      }
+
+                  formCard.addView(label("পেয়ার"))
+                  val etPair = input("যেমন BTC/USDT")
+                  formCard.addView(etPair)
+
+                  formCard.addView(label("ডিরেকশন"))
+                  val dirRow = LinearLayout(this).apply {
+                      orientation = LinearLayout.HORIZONTAL
+                      setPadding(0, 0, 0, 8)
+                  }
+                  longBtn = makeDirBtn("LONG", true)
+                  shortBtn = makeDirBtn("SHORT", false)
+                  longBtn.setOnClickListener { setDirection("LONG") }
+                  shortBtn.setOnClickListener { setDirection("SHORT") }
+                  dirRow.addView(longBtn, LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(0, 0, 8, 0) })
+                  dirRow.addView(shortBtn, LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(8, 0, 0, 0) })
+                  formCard.addView(dirRow)
+
+                  formCard.addView(label("এন্ট্রি প্রাইস"))
+                  val etEntry = input("0.00", InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL)
+                  formCard.addView(etEntry)
+
+                  formCard.addView(label("এক্সিট প্রাইস"))
+                  val etExit = input("0.00", InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL)
+                  formCard.addView(etExit)
+
+                  formCard.addView(label("কোয়ান্টিটি"))
+                  val etQty = input("0.00", InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL)
+                  formCard.addView(etQty)
+
+                  formCard.addView(label("তারিখ"))
+                  dateLabel = TextView(this).apply {
+                      text = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(selectedDate))
+                      textSize = 15f; setTextColor(Color.parseColor("#0F172A"))
+                      background = GradientDrawable().apply {
+                          cornerRadius = 16f; setColor(Color.parseColor("#F1F5F9"))
+                      }
+                      setPadding(32, 28, 32, 28)
+                      setOnClickListener {
+                          val cal = Calendar.getInstance().apply { timeInMillis = selectedDate }
+                          DatePickerDialog(this@AddTradeActivity,
+                              { _, y, m, d ->
+                                  cal.set(y, m, d); selectedDate = cal.timeInMillis
+                                  dateLabel.text = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(selectedDate))
+                              },
+                              cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)
+                          ).show()
+                      }
+                  }
+                  formCard.addView(dateLabel)
+
+                  formCard.addView(label("অ্যাকাউন্ট"))
+                  val etAcc = input("Default")
+                  etAcc.setText("Default")
+                  formCard.addView(etAcc)
+
+                  formCard.addView(label("নোট (ঐচ্ছিক)"))
+                  val etNotes = input("স্ট্র্যাটেজি, ইমোশন...", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE)
+                  etNotes.minLines = 2
+                  formCard.addView(etNotes)
+
+                  // Save button
+                  val saveBtn = TextView(this).apply {
+                      text = "✓ ট্রেড সেভ করুন"
+                      textSize = 16f
+                      setTextColor(Color.WHITE)
+                      setTypeface(typeface, Typeface.BOLD)
+                      gravity = Gravity.CENTER
+                      background = GradientDrawable(
+                          GradientDrawable.Orientation.TL_BR,
+                          intArrayOf(Color.parseColor("#6366F1"), Color.parseColor("#8B5CF6"))
+                      ).apply { cornerRadius = 40f }
+                      setPadding(0, 44, 0, 44)
+                      layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = 40 }
+                      setOnClickListener {
+                          val pair = etPair.text.toString().trim().uppercase()
+                          val entry = etEntry.text.toString().toDoubleOrNull()
+                          val exit = etExit.text.toString().toDoubleOrNull()
+                          val qty = etQty.text.toString().toDoubleOrNull()
+                          if (pair.isBlank()) {
+                              Toast.makeText(this@AddTradeActivity, "পেয়ার লিখুন", Toast.LENGTH_SHORT).show(); return@setOnClickListener
+                          }
+                          if (entry == null || exit == null || qty == null) {
+                              Toast.makeText(this@AddTradeActivity, "সংখ্যাগুলো ঠিকভাবে লিখুন", Toast.LENGTH_SHORT).show(); return@setOnClickListener
+                          }
+                          val trade = Trade(
+                              pair = pair, direction = direction,
+                              entry = entry, exit = exit, qty = qty,
+                              date = selectedDate,
+                              notes = etNotes.text.toString().trim(),
+                              account = etAcc.text.toString().trim().ifBlank { "Default" }
+                          )
+                          TradeStore(this@AddTradeActivity).add(trade)
+                          Toast.makeText(this@AddTradeActivity, "সেভ হয়েছে ✅", Toast.LENGTH_SHORT).show()
+                          setResult(RESULT_OK); finish()
+                      }
+                  }
+
+                  col.addView(header)
+                  col.addView(formCard)
+                  col.addView(saveBtn)
+                  root.addView(col)
+                  setContentView(root)
+              }
+
+              private fun makeDirBtn(text: String, selected: Boolean): TextView {
+                  return TextView(this).apply {
+                      this.text = text; textSize = 14f
+                      setTypeface(typeface, Typeface.BOLD)
+                      gravity = Gravity.CENTER
+                      setPadding(0, 28, 0, 28)
+                      background = GradientDrawable().apply {
+                          cornerRadius = 24f
+                          setColor(Color.parseColor(if (selected) "#6366F1" else "#F1F5F9"))
+                      }
+                      setTextColor(Color.parseColor(if (selected) "#FFFFFF" else "#64748B"))
+                  }
+              }
+
+              private fun setDirection(d: String) {
+                  direction = d
+                  longBtn.setBackgroundColor(0)
+                  val lg = GradientDrawable().apply {
+                      cornerRadius = 24f
+                      setColor(Color.parseColor(if (d == "LONG") "#6366F1" else "#F1F5F9"))
+                  }
+                  val sg = GradientDrawable().apply {
+                      cornerRadius = 24f
+                      setColor(Color.parseColor(if (d == "SHORT") "#6366F1" else "#F1F5F9"))
+                  }
+                  longBtn.background = lg
+                  shortBtn.background = sg
+                  longBtn.setTextColor(Color.parseColor(if (d == "LONG") "#FFFFFF" else "#64748B"))
+                  shortBtn.setTextColor(Color.parseColor(if (d == "SHORT") "#FFFFFF" else "#64748B"))
+              }
+          }
+          EOF
+
+      - name: Write SettingsActivity
+        run: |
+          cat > app/src/main/java/com/projournal/trading/SettingsActivity.kt <<'EOF'
+          package com.projournal.trading
+
+          import android.graphics.Color
+          import android.graphics.Typeface
+          import android.graphics.drawable.GradientDrawable
+          import android.os.Bundle
+          import android.view.Gravity
+          import android.widget.*
+          import androidx.activity.result.contract.ActivityResultContracts
+          import androidx.appcompat.app.AlertDialog
+          import androidx.appcompat.app.AppCompatActivity
+          import com.google.android.material.card.MaterialCardView
+          import org.json.JSONArray
+          import java.text.SimpleDateFormat
+          import java.util.*
+
+          class SettingsActivity : AppCompatActivity() {
+              private lateinit var store: TradeStore
+
+              private val saveCsvLauncher = registerForActivityResult(
+                  ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+                  uri?.let { saveTo(it, buildCsv(), "CSV") }
+              }
+              private val saveJsonLauncher = registerForActivityResult(
+                  ActivityResultContracts.CreateDocument("application/json")) { uri ->
+                  uri?.let { saveTo(it, buildJson(), "JSON") }
+              }
+
+              override fun onCreate(b: Bundle?) {
+                  super.onCreate(b)
+                  store = TradeStore(this)
+                  buildUi()
+              }
+
+              private fun buildUi() {
+                  val root = ScrollView(this).apply { setBackgroundColor(Color.parseColor("#F8FAFC")) }
+                  val col = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      setPadding(40, 60, 40, 40)
+                  }
+
+                  // Header
+                  val header = LinearLayout(this).apply {
+                      orientation = LinearLayout.HORIZONTAL
+                      gravity = Gravity.CENTER_VERTICAL
+                      setPadding(0, 0, 0, 32)
+                  }
+                  header.addView(TextView(this).apply {
+                      text = "‹"; textSize = 32f; setPadding(0, 0, 20, 8)
+                      setTextColor(Color.parseColor("#0F172A"))
+                      setOnClickListener { finish() }
+                  })
+                  header.addView(TextView(this).apply {
+                      text = "সেটিংস"; textSize = 22f
+                      setTextColor(Color.parseColor("#0F172A"))
+                      setTypeface(typeface, Typeface.BOLD)
+                  })
+
+                  fun section(t: String) = TextView(this).apply {
+                      text = t; textSize = 13f
+                      setTextColor(Color.parseColor("#64748B"))
+                      setTypeface(typeface, Typeface.BOLD)
+                      setPadding(8, 24, 8, 12)
+                      letterSpacing = 0.05f
+                  }
+
+                  fun actionCard(icon: String, title: String, subtitle: String, colorHex: String, onClick: () -> Unit): MaterialCardView {
+                      val card = MaterialCardView(this).apply {
+                          radius = 28f; cardElevation = 3f
+                          strokeWidth = 1; strokeColor = Color.parseColor("#E2E8F0")
+                          setCardBackgroundColor(Color.WHITE)
+                          layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 12 }
+                          setOnClickListener { onClick() }; isClickable = true; isFocusable = true
+                      }
+                      val row = LinearLayout(this).apply {
+                          orientation = LinearLayout.HORIZONTAL
+                          gravity = Gravity.CENTER_VERTICAL
+                          setPadding(36, 32, 36, 32)
+                      }
+                      val iconBox = LinearLayout(this).apply {
+                          background = GradientDrawable().apply {
+                              cornerRadius = 28f; setColor(Color.parseColor(colorHex))
+                          }
+                          layoutParams = LinearLayout.LayoutParams(88, 88).apply { rightMargin = 28 }
+                          gravity = Gravity.CENTER
+                      }
+                      iconBox.addView(TextView(this).apply {
+                          text = icon; textSize = 28f; gravity = Gravity.CENTER
+                      })
+                      row.addView(iconBox)
+                      val c = LinearLayout(this).apply {
+                          orientation = LinearLayout.VERTICAL
+                          layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
+                      }
+                      c.addView(TextView(this).apply {
+                          text = title; textSize = 15f
+                          setTextColor(Color.parseColor("#0F172A"))
+                          setTypeface(typeface, Typeface.BOLD)
+                      })
+                      c.addView(TextView(this).apply {
+                          text = subtitle; textSize = 12f
+                          setTextColor(Color.parseColor("#64748B"))
+                          setPadding(0, 4, 0, 0)
+                      })
+                      row.addView(c)
+                      row.addView(TextView(this).apply {
+                          text = "›"; textSize = 28f; setTextColor(Color.parseColor("#94A3B8"))
+                      })
+                      card.addView(row)
+                      return card
+                  }
+
+                  val trades = store.all()
+                  val dateStr = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+
+                  col.addView(header)
+                  col.addView(section("ডেটা এক্সপোর্ট"))
+                  col.addView(actionCard("☁️", "Google Drive-এ CSV সেভ",
+                      "${trades.size}টি ট্রেড · Drive বা Downloads", "#10B981") {
+                      saveCsvLauncher.launch("trading_journal_$dateStr.csv")
+                  })
+                  col.addView(actionCard("📄", "JSON হিসেবে সেভ",
+                      "ব্যাকআপ বা শেয়ারের জন্য", "#6366F1") {
+                      saveJsonLauncher.launch("trading_journal_$dateStr.json")
+                  })
+                  col.addView(section("ডেটা ম্যানেজমেন্ট"))
+                  col.addView(actionCard("🗑️", "সব ট্রেড মুছুন",
+                      "${trades.size}টি ট্রেড স্থায়ীভাবে মুছে যাবে", "#EF4444") {
+                      AlertDialog.Builder(this)
+                          .setTitle("নিশ্চিত?")
+                          .setMessage("সব ট্রেড স্থায়ীভাবে মুছে যাবে। এটি ফিরিয়ে আনা যাবে না।")
+                          .setPositiveButton("হ্যাঁ, মুছুন") { _, _ ->
+                              store.clear()
+                              Toast.makeText(this, "সব মুছে ফেলা হয়েছে", Toast.LENGTH_SHORT).show()
+                              finish()
+                          }
+                          .setNegativeButton("বাতিল", null).show()
+                  })
+                  col.addView(section("সম্পর্কে"))
+                  col.addView(actionCard("ℹ️", "Trading Journal v1.0",
+                      "আপনার ট্রেডের হিসাব রাখার সহজ উপায়", "#8B5CF6") {})
+                  root.addView(col)
+                  setContentView(root)
+              }
+
+              private fun buildCsv(): String {
+                  val trades = store.all().sortedBy { it.date }
+                  val sb = StringBuilder()
+                  sb.append('\uFEFF')
+                  sb.append("Date,Pair,Direction,Entry,Exit,Qty,P&L,Account,Notes\n")
+                  val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                  trades.forEach { t ->
+                      sb.append(fmt.format(Date(t.date))).append(',')
+                      sb.append(esc(t.pair)).append(',')
+                      sb.append(t.direction).append(',')
+                      sb.append(t.entry).append(',')
+                      sb.append(t.exit).append(',')
+                      sb.append(t.qty).append(',')
+                      sb.append(String.format(Locale.US, "%.2f", t.pnl)).append(',')
+                      sb.append(esc(t.account)).append(',')
+                      sb.append(esc(t.notes)).append('\n')
+                  }
+                  return sb.toString()
+              }
+
+              private fun buildJson(): String {
+                  val arr = JSONArray()
+                  store.all().forEach { arr.put(it.toJson()) }
+                  return arr.toString(2)
+              }
+
+              private fun esc(s: String) = "\"" + s.replace("\"", "\"\"").replace("\n", " ") + "\""
+
+              private fun saveTo(uri: android.net.Uri, content: String, type: String) {
+                  try {
+                      contentResolver.openOutputStream(uri)?.use { it.write(content.toByteArray()) }
+                      Toast.makeText(this, "$type সেভ হয়েছে ✅", Toast.LENGTH_LONG).show()
+                  } catch (e: Exception) {
+                      Toast.makeText(this, "সেভ ব্যর্থ: ${e.message}", Toast.LENGTH_LONG).show()
+                  }
+              }
+          }
+          EOF
+
+      - name: Build APK
+        run: gradle assembleRelease --stacktrace
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: trading-journal-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: trading-journal-native-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
           retention-days: 30
