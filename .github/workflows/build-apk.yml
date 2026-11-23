@@ -548,6 +548,13 @@ jobs:
           sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <application#' android/app/src/main/AndroidManifest.xml
           head -5 android/app/src/main/AndroidManifest.xml
 
+      # 👇 এই নতুন স্টেপটিই লিন্ট ক্র্যাশ সমাধান করবে 👇
+      - name: Disable Android Lint to bypass google_sign_in bug
+        run: |
+          sed -i '/android {/a\    lintOptions { checkReleaseBuilds false; abortOnError false }' android/app/build.gradle
+          echo "=== build.gradle (first 20 lines) ==="
+          head -20 android/app/build.gradle
+
       - name: Get dependencies
         run: flutter pub get
 
