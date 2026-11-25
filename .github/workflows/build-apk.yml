@@ -451,16 +451,16 @@ jobs:
                       "MACD=12EMA-26EMA। সিগন্যাল=MACD-এর 9EMA। MACD সিগন্যালের ওপরে=bullish। হিস্টোগ্রাম=momentum। ডাইভার্জেন্স=reversal signal।",
                       listOf("MACD-সিগন্যাল ক্রস","হিস্টোগ্রাম=momentum","ডাইভার্জেন্স")),
                   Lesson("r1","রিস্ক ম্যানেজমেন্ট","২% রুল","সবচেয়ে গুরুত্বপূর্ণ",
-                      "প্রতি ট্রেডে অ্যাকাউন্টের সর্বোচ্চ ২% রিস্ক করুন। $1000-এ সর্বোচ্চ $20। টানা ১০টি লসেও ২০% থাকবে, রিকভারি সম্ভব।",
+                      "প্রতি ট্রেডে অ্যাকাউন্টের সর্বোচ্চ ২% রিস্ক করুন। ১০০০ ডলারে সর্বোচ্চ ২০ ডলার। টানা ১০টি লসেও ২০% থাকবে, রিকভারি সম্ভব।",
                       listOf("সর্বোচ্চ ২%","টানা লসেও টিকে","রিকভারি সম্ভব")),
                   Lesson("r2","রিস্ক ম্যানেজমেন্ট","রিস্ক:রিওয়ার্ড","লাভ/লস অনুপাত",
-                      "কমপক্ষে ১:২ R:R। $10 রিস্কে $20+ টার্গেট। ১:২ R:R-এ ৪০% উইন রেটেও লাভজনক। ১:১-এর নিচে এড়িয়ে চলুন।",
+                      "কমপক্ষে ১:২ R:R। ১০ ডলার রিস্কে ২০+ ডলার টার্গেট। ১:২ R:R-এ ৪০% উইন রেটেও লাভজনক। ১:১-এর নিচে এড়িয়ে চলুন।",
                       listOf("কমপক্ষে ১:২","৪০% উইনেও লাভ","১:১ এড়িয়ে চলুন")),
                   Lesson("r3","রিস্ক ম্যানেজমেন্ট","স্টপ লস","ক্ষতি সীমিত",
                       "প্রতিটি ট্রেডে স্টপ লস সেট করুন—এন্ট্রির আগেই। সাপোর্ট/রেজিস্ট্যান্সের নিচে/উপরে রাখুন। কখনো স্টপ লস সরাবেন না—এটি সবচেয়ে বড় ভুল।",
                       listOf("এন্ট্রির আগেই সেট","সাপোর্টে রাখুন","কখনো সরাবেন না")),
                   Lesson("r4","রিস্ক ম্যানেজমেন্ট","পজিশন সাইজিং","কত লট",
-                      "পজিশন=(অ্যাকাউন্ট×রিস্ক%)÷(এন্ট্রি-স্টপ)। $1000, ২%, 50 পিপ স্টপে=0.4 লট। সঠিক সাইজ=সঠিক রিস্ক।",
+                      "পজিশন=(অ্যাকাউন্ট x রিস্ক%) ÷ (এন্ট্রি-স্টপ)। ১০০০ ডলার, ২%, ৫০ পিপ স্টপে=০.৪ লট। সঠিক সাইজ=সঠিক রিস্ক।",
                       listOf("ফর্মুলা মনে রাখুন","সাইজ=রিস্ক নিয়ন্ত্রণ","কখনো বেশি নয়")),
                   Lesson("p1","সাইকোলজি","ভয় ও লোভ","প্রধান দুই শত্রু",
                       "ভয়: লাভের ট্রেড তাড়াতাড়ি বন্ধ। লোভ: লস ধরে রাখা বা বড় সাইজ। সমাধান = লিখিত প্ল্যান ও কঠোর অনুসরণ।",
@@ -570,7 +570,7 @@ jobs:
                   }
                   navBtns = mutableListOf()
                   val items = listOf("🏠" to "হোম", "📚" to "শিখুন", "📊" to "জার্নাল", "🧮" to "টুলস", "☰" to "আরও")
-                  items.forEachIndexed { idx, (icon, label) ->
+                  items.forEachIndexed { idx, pair ->
                       val btn = LinearLayout(this).apply {
                           orientation = LinearLayout.VERTICAL
                           gravity = Gravity.CENTER
@@ -578,10 +578,10 @@ jobs:
                           setOnClickListener { showTab(idx) }
                       }
                       btn.addView(TextView(this).apply {
-                          text = icon; textSize = 22f; gravity = Gravity.CENTER; tag = "icon"
+                          text = pair.first; textSize = 22f; gravity = Gravity.CENTER; tag = "icon"
                       })
                       btn.addView(TextView(this).apply {
-                          text = label; textSize = 11f; gravity = Gravity.CENTER
+                          text = pair.second; textSize = 11f; gravity = Gravity.CENTER
                           setPadding(0, 4, 0, 0); tag = "label"
                       })
                       navBtns.add(btn)
@@ -624,7 +624,7 @@ jobs:
                   val wr = Stats.winRate(trades)
 
                   col.addView(TextView(this).apply {
-                      text = "স্বাগতম 👋"; textSize = 13f; setTextColor(Color.parseColor("#64748B"))
+                      text = "স্বাগতম"; textSize = 13f; setTextColor(Color.parseColor("#64748B"))
                   })
                   col.addView(TextView(this).apply {
                       text = "Trading Master"; textSize = 26f
@@ -645,8 +645,10 @@ jobs:
                   hero.addView(TextView(this).apply {
                       text = "মোট P&L"; textSize = 12f; setTextColor(Color.WHITE); alpha = 0.85f
                   })
+                  val pnlSign = if (pnl>=0) "+" else "-"
+                  val pnlStr = pnlSign + String.format(Locale.US,"%.2f",Math.abs(pnl))
                   hero.addView(TextView(this).apply {
-                      text = (if (pnl>=0) "+$" else "-$") + String.format(Locale.US,"%.2f",Math.abs(pnl))
+                      text = pnlStr
                       textSize = 34f; setTextColor(Color.WHITE)
                       setTypeface(typeface, Typeface.BOLD); setPadding(0, 10, 0, 4)
                   })
@@ -670,7 +672,7 @@ jobs:
                       orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
                   }
                   topRow.addView(TextView(this).apply {
-                      text = "✅ আজকের চেকলিস্ট"; textSize = 15f
+                      text = "আজকের চেকলিস্ট"; textSize = 15f
                       setTextColor(Color.parseColor("#0F172A"))
                       setTypeface(typeface, Typeface.BOLD)
                       layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
@@ -689,9 +691,10 @@ jobs:
                           setOnClickListener { cs.setChecked(item.id, !c); showTab(0) }
                       }
                       row.addView(TextView(this).apply {
-                          text = if (c) "☑" else "☐"; textSize = 20f
+                          text = if (c) "[x]" else "[ ]"; textSize = 14f
                           setTextColor(Color.parseColor(if (c) "#10B981" else "#94A3B8"))
                           setPadding(0, 0, 14, 0)
+                          setTypeface(typeface, Typeface.BOLD)
                       })
                       row.addView(TextView(this).apply {
                           text = item.text; textSize = 13f
@@ -703,12 +706,13 @@ jobs:
                   checkCard.addView(checkInner)
 
                   val lessonsRead = lp.readCount(Content.lessons.map { it.id })
+                  val bestPairName = Stats.bestPair(trades).first.ifBlank { "—" }
                   val qr = LinearLayout(this).apply {
                       orientation = LinearLayout.HORIZONTAL
                       layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 16 }
                   }
-                  qr.addView(quickStat("📚 পড়া", "$lessonsRead/${Content.lessons.size}", "#3B82F6"))
-                  qr.addView(quickStat("🎯 সেরা পেয়ার", Stats.bestPair(trades).first.ifBlank { "—" }, "#10B981"))
+                  qr.addView(quickStat("পড়া", "$lessonsRead/${Content.lessons.size}", "#3B82F6"))
+                  qr.addView(quickStat("সেরা পেয়ার", bestPairName, "#10B981"))
 
                   col.addView(hero)
                   col.addView(checkCard)
@@ -785,7 +789,7 @@ jobs:
                       orientation = LinearLayout.VERTICAL; setPadding(32, 48, 32, 32)
                   }
                   col.addView(TextView(this).apply {
-                      text = "📚 শিখুন"; textSize = 26f
+                      text = "শিখুন"; textSize = 26f
                       setTextColor(Color.parseColor("#0F172A"))
                       setTypeface(typeface, Typeface.BOLD); setPadding(0, 0, 0, 4)
                   })
@@ -835,7 +839,7 @@ jobs:
                           setTextColor(Color.parseColor("#64748B")); setPadding(0, 4, 0, 0)
                       })
                       row.addView(info)
-                      row.addView(TextView(this).apply { text = "›"; textSize = 28f; setTextColor(Color.parseColor("#94A3B8")) })
+                      row.addView(TextView(this).apply { text = ">"; textSize = 20f; setTextColor(Color.parseColor("#94A3B8")) })
                       card.addView(row)
                       col.addView(card)
                   }
@@ -850,7 +854,7 @@ jobs:
                   }
                   val trades = TradeStore(this).all()
                   col.addView(TextView(this).apply {
-                      text = "📊 জার্নাল"; textSize = 26f
+                      text = "জার্নাল"; textSize = 26f
                       setTextColor(Color.parseColor("#0F172A"))
                       setTypeface(typeface, Typeface.BOLD); setPadding(0, 0, 0, 4)
                   })
@@ -924,13 +928,14 @@ jobs:
                   })
                   if (t.strategy.isNotBlank()) {
                       info.addView(TextView(this).apply {
-                          text = "🎯 ${t.strategy}"; textSize = 11f
+                          text = t.strategy; textSize = 11f
                           setTextColor(Color.parseColor("#6366F1")); setPadding(0, 2, 0, 0)
                       })
                   }
                   row.addView(info)
+                  val pnlText = (if (win) "+" else "-") + String.format(Locale.US,"%.2f",Math.abs(t.pnl))
                   row.addView(TextView(this).apply {
-                      text = (if (win) "+" else "-") + "$" + String.format(Locale.US,"%.2f",Math.abs(t.pnl))
+                      text = pnlText
                       textSize = 14f
                       setTextColor(Color.parseColor(if (win) "#10B981" else "#EF4444"))
                       setTypeface(typeface, Typeface.BOLD)
@@ -947,8 +952,9 @@ jobs:
                       dlg.addView(TextView(this).apply { text=v; textSize=14f; setTextColor(Color.parseColor("#0F172A")); setTypeface(typeface,Typeface.BOLD) })
                   }
                   lbl("পেয়ার", t.pair); lbl("ডিরেকশন", t.direction)
-                  lbl("এন্ট্রি → এক্সিট", "${t.entry} → ${t.exit}")
-                  lbl("P&L", (if (t.pnl>=0) "+" else "") + "$" + String.format(Locale.US,"%.2f",t.pnl))
+                  lbl("এন্ট্রি থেকে এক্সিট", "${t.entry} থেকে ${t.exit}")
+                  val pnlVal = (if (t.pnl>=0) "+" else "") + String.format(Locale.US,"%.2f",t.pnl)
+                  lbl("P&L", pnlVal)
                   if (t.strategy.isNotBlank()) lbl("স্ট্রাটেজি", t.strategy)
                   if (t.session.isNotBlank()) lbl("সেশন", t.session)
                   if (t.emotion.isNotBlank()) lbl("ইমোশন", t.emotion)
@@ -965,7 +971,7 @@ jobs:
                       orientation = LinearLayout.VERTICAL; setPadding(32, 48, 32, 32)
                   }
                   col.addView(TextView(this).apply {
-                      text = "🧮 টুলস"; textSize = 26f
+                      text = "টুলস"; textSize = 26f
                       setTextColor(Color.parseColor("#0F172A"))
                       setTypeface(typeface, Typeface.BOLD); setPadding(0, 0, 0, 4)
                   })
@@ -1012,7 +1018,7 @@ jobs:
                       text = sub; textSize = 12f; setTextColor(Color.parseColor("#64748B")); setPadding(0, 4, 0, 0)
                   })
                   row.addView(info)
-                  row.addView(TextView(this).apply { text = "›"; textSize = 26f; setTextColor(Color.parseColor("#94A3B8")) })
+                  row.addView(TextView(this).apply { text = ">"; textSize = 20f; setTextColor(Color.parseColor("#94A3B8")) })
                   c.addView(row); return c
               }
 
@@ -1053,7 +1059,9 @@ jobs:
                               val s = sl.text.toString().toDouble()
                               val diff = Math.abs(e-s)
                               if (diff==0.0) return@setPositiveButton
-                              res.text = "রিস্ক: $%.2f\nপজিশন: %.4f".format(b*r, (b*r)/diff)
+                              val riskAmt = b*r
+                              val posSize = riskAmt/diff
+                              res.text = "রিস্ক: " + String.format(Locale.US,"%.2f",riskAmt) + "\nপজিশন: " + String.format(Locale.US,"%.4f",posSize)
                           } catch (ex: Exception) { res.text = "সব ফিল্ড পূরণ করুন" }
                       }.setNegativeButton("বন্ধ", null).show()
               }
@@ -1077,7 +1085,7 @@ jobs:
                               val t = tp.text.toString().toDouble()
                               val r = Math.abs(e-s); val w = Math.abs(t-e)
                               if (r==0.0) return@setPositiveButton
-                              res.text = "রিস্ক: %.2f\nরিওয়ার্ড: %.2f\nR:R = 1:%.2f".format(r, w, w/r)
+                              res.text = "রিস্ক: " + String.format(Locale.US,"%.2f",r) + "\nরিওয়ার্ড: " + String.format(Locale.US,"%.2f",w) + "\nR:R = 1:" + String.format(Locale.US,"%.2f",w/r)
                           } catch (ex: Exception) { res.text = "সব ফিল্ড পূরণ করুন" }
                       }.setNegativeButton("বন্ধ", null).show()
               }
@@ -1086,13 +1094,13 @@ jobs:
                   val d = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(40, 16, 40, 0) }
                   val lot = inputField("লট সাইজ").apply { setText("1") }
                   val res = TextView(this).apply {
-                      text = "স্ট্যান্ডার্ড লটে প্রতি পিপ ~$10"; textSize = 13f
+                      text = "স্ট্যান্ডার্ড লটে প্রতি পিপ ১০ ডলার"; textSize = 13f
                       setTextColor(Color.parseColor("#F59E0B")); setPadding(0, 16, 0, 8)
                   }
                   d.addView(lbl("লট সাইজ")); d.addView(lot); d.addView(res)
                   AlertDialog.Builder(this).setTitle("পিপ ভ্যালু").setView(d)
                       .setPositiveButton("হিসাব") { _, _ ->
-                          try { res.text = "প্রতি পিপ: $%.2f".format(lot.text.toString().toDouble()*10) }
+                          try { res.text = "প্রতি পিপ: " + String.format(Locale.US,"%.2f",lot.text.toString().toDouble()*10) }
                           catch (ex: Exception) { res.text = "সঠিক মান দিন" }
                       }.setNegativeButton("বন্ধ", null).show()
               }
@@ -1115,8 +1123,9 @@ jobs:
                               val s = start.text.toString().toDouble()
                               val r = rate.text.toString().toDouble()/100
                               val m = months.text.toString().toInt()
-                              val f = s * Math.pow(1+r, m.toDouble())
-                              res.text = "চূড়ান্ত: $%.2f\nলাভ: $%.2f".format(f, f-s)
+                              var f = s
+                              for (i in 1..m) f *= (1+r)
+                              res.text = "চূড়ান্ত: " + String.format(Locale.US,"%.2f",f) + "\nলাভ: " + String.format(Locale.US,"%.2f",f-s)
                           } catch (ex: Exception) { res.text = "সব ফিল্ড পূরণ করুন" }
                       }.setNegativeButton("বন্ধ", null).show()
               }
@@ -1137,7 +1146,8 @@ jobs:
                               val p = peak.text.toString().toDouble()
                               val n = now.text.toString().toDouble()
                               val dd = ((p-n)/p)*100
-                              res.text = "ড্রডাউন: %.2f%%\nপুনরুদ্ধারে দরকার: %.2f%%".format(dd, (dd/(100-dd))*100)
+                              val recover = if (dd<100) (dd/(100-dd))*100 else 0.0
+                              res.text = "ড্রডাউন: " + String.format(Locale.US,"%.2f",dd) + "%\nপুনরুদ্ধারে দরকার: " + String.format(Locale.US,"%.2f",recover) + "%"
                           } catch (ex: Exception) { res.text = "সঠিক মান দিন" }
                       }.setNegativeButton("বন্ধ", null).show()
               }
@@ -1148,7 +1158,7 @@ jobs:
                       orientation = LinearLayout.VERTICAL; setPadding(32, 48, 32, 32)
                   }
                   col.addView(TextView(this).apply {
-                      text = "☰ আরও"; textSize = 26f
+                      text = "আরও"; textSize = 26f
                       setTextColor(Color.parseColor("#0F172A"))
                       setTypeface(typeface, Typeface.BOLD); setPadding(0, 0, 0, 20)
                   })
@@ -1171,7 +1181,7 @@ jobs:
                   col.addView(sectionHeader("সম্পর্কে"))
                   col.addView(toolCard("ℹ️","Trading Master v1.0","সবকিছু এক অ্যাপে","#EC4899") {
                       AlertDialog.Builder(this).setTitle("Trading Master")
-                          .setMessage("একজন ট্রেডারের সম্পূর্ণ সঙ্গী — শিখুন, ট্রেড করুন, জার্নাল রাখুন।\n\nসংস্করণ: 1.0")
+                          .setMessage("একজন ট্রেডারের সম্পূর্ণ সঙ্গী। শিখুন, ট্রেড করুন, জার্নাল রাখুন।\n\nসংস্করণ: 1.0")
                           .setPositiveButton("ঠিক আছে", null).show()
                   })
                   sv.addView(col); return sv
@@ -1249,11 +1259,11 @@ jobs:
 
               private fun showAddStrategy() {
                   val d = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(40, 16, 40, 0) }
-                  val name = inputField("স্ট্রাটেজির নাম"); name.inputType = InputType.TYPE_CLASS_TEXT
-                  val desc = inputField("বর্ণনা"); desc.inputType = InputType.TYPE_CLASS_TEXT
-                  val entryR = inputField("এন্ট্রি রুলস"); entryR.inputType = InputType.TYPE_CLASS_TEXT
-                  val exitR = inputField("এক্সিট রুলস"); exitR.inputType = InputType.TYPE_CLASS_TEXT
-                  val tf = inputField("টাইমফ্রেম"); tf.inputType = InputType.TYPE_CLASS_TEXT
+                  val name = EditText(this).apply { hint = "স্ট্রাটেজির নাম"; setBackgroundColor(Color.parseColor("#F1F5F9")); setPadding(28, 22, 28, 22); textSize = 14f; layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 10 } }
+                  val desc = EditText(this).apply { hint = "বর্ণনা"; setBackgroundColor(Color.parseColor("#F1F5F9")); setPadding(28, 22, 28, 22); textSize = 14f; layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 10 } }
+                  val entryR = EditText(this).apply { hint = "এন্ট্রি রুলস"; setBackgroundColor(Color.parseColor("#F1F5F9")); setPadding(28, 22, 28, 22); textSize = 14f; layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 10 } }
+                  val exitR = EditText(this).apply { hint = "এক্সিট রুলস"; setBackgroundColor(Color.parseColor("#F1F5F9")); setPadding(28, 22, 28, 22); textSize = 14f; layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 10 } }
+                  val tf = EditText(this).apply { hint = "টাইমফ্রেম"; setBackgroundColor(Color.parseColor("#F1F5F9")); setPadding(28, 22, 28, 22); textSize = 14f; layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 10 } }
                   d.addView(name); d.addView(desc); d.addView(entryR); d.addView(exitR); d.addView(tf)
                   AlertDialog.Builder(this).setTitle("নতুন স্ট্রাটেজি")
                       .setView(ScrollView(this).apply { addView(d) })
@@ -1264,7 +1274,7 @@ jobs:
                                   entryRules = entryR.text.toString(), exitRules = exitR.text.toString(),
                                   timeframe = tf.text.toString()
                               ))
-                              Toast.makeText(this, "সেভ হয়েছে ✅", Toast.LENGTH_SHORT).show()
+                              Toast.makeText(this, "সেভ হয়েছে", Toast.LENGTH_SHORT).show()
                           }
                       }.setNegativeButton("বাতিল", null).show()
               }
@@ -1298,12 +1308,12 @@ jobs:
                       setPadding(0, 0, 0, 20)
                   }
                   header.addView(TextView(this).apply {
-                      text = "‹"; textSize = 30f; setPadding(0, 0, 16, 6)
+                      text = "<"; textSize = 26f; setPadding(0, 0, 16, 4)
                       setTextColor(Color.parseColor("#0F172A"))
                       setOnClickListener { finish() }
                   })
                   header.addView(TextView(this).apply {
-                      text = "📈 অ্যানালিটিক্স"; textSize = 22f
+                      text = "অ্যানালিটিক্স"; textSize = 22f
                       setTextColor(Color.parseColor("#0F172A"))
                       setTypeface(typeface, Typeface.BOLD)
                   })
@@ -1313,14 +1323,17 @@ jobs:
                   val pnl = Stats.totalPnl(trades)
                   val wr = Stats.winRate(trades)
                   val pf = Stats.profitFactor(trades)
+                  val pnlSign = if (pnl>=0) "+" else "-"
+                  val pnlStr = pnlSign + String.format(Locale.US,"%.2f",Math.abs(pnl))
+                  val pfStr = if (pf>99) "99+" else String.format(Locale.US,"%.2f",pf)
 
                   val row1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-                  row1.addView(statCard("মোট P&L", (if (pnl>=0) "+$" else "-$")+String.format(Locale.US,"%.2f",Math.abs(pnl)), if (pnl>=0) "#10B981" else "#EF4444"))
+                  row1.addView(statCard("মোট P&L", pnlStr, if (pnl>=0) "#10B981" else "#EF4444"))
                   row1.addView(statCard("উইন রেট", String.format(Locale.US,"%.1f",wr)+"%", "#3B82F6"))
                   col.addView(row1)
 
                   val row2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-                  row2.addView(statCard("প্রফিট ফ্যাক্টর", if (pf>99) "∞" else String.format(Locale.US,"%.2f",pf), "#F59E0B"))
+                  row2.addView(statCard("প্রফিট ফ্যাক্টর", pfStr, "#F59E0B"))
                   row2.addView(statCard("মোট ট্রেড", "${trades.size}", "#8B5CF6"))
                   col.addView(row2)
 
@@ -1414,8 +1427,9 @@ jobs:
                       setTextColor(Color.parseColor("#0F172A")); setTypeface(typeface, Typeface.BOLD)
                   })
                   row.addView(info)
+                  val pnlText = (if (pnl>=0) "+" else "-") + String.format(Locale.US,"%.2f",Math.abs(pnl))
                   row.addView(TextView(this).apply {
-                      text = (if (pnl>=0) "+" else "-") + "$" + String.format(Locale.US,"%.2f",Math.abs(pnl))
+                      text = pnlText
                       textSize = 15f; setTextColor(Color.parseColor(colorHex))
                       setTypeface(typeface, Typeface.BOLD)
                   })
@@ -1451,7 +1465,7 @@ jobs:
                       setPadding(0, 0, 0, 20)
                   }
                   header.addView(TextView(this).apply {
-                      text = "‹"; textSize = 30f; setPadding(0, 0, 16, 6)
+                      text = "<"; textSize = 26f; setPadding(0, 0, 16, 4)
                       setTextColor(Color.parseColor("#0F172A"))
                       setOnClickListener { finish() }
                   })
@@ -1488,7 +1502,7 @@ jobs:
                       })
                       if (read) {
                           titleRow.addView(TextView(this).apply {
-                              text = "✓"; textSize = 16f; setTextColor(Color.parseColor("#10B981"))
+                              text = "OK"; textSize = 11f; setTextColor(Color.parseColor("#10B981"))
                               setTypeface(typeface, Typeface.BOLD)
                           })
                       }
@@ -1532,7 +1546,7 @@ jobs:
                       setPadding(0, 0, 0, 20)
                   }
                   header.addView(TextView(this).apply {
-                      text = "‹"; textSize = 30f; setPadding(0, 0, 16, 6)
+                      text = "<"; textSize = 26f; setPadding(0, 0, 16, 4)
                       setTextColor(Color.parseColor("#0F172A"))
                       setOnClickListener { finish() }
                   })
@@ -1578,7 +1592,7 @@ jobs:
                           layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 8 }
                       }
                       row.addView(TextView(this).apply {
-                          text = "✓"; textSize = 15f
+                          text = ">"; textSize = 14f
                           setTextColor(Color.parseColor("#10B981"))
                           setTypeface(typeface, Typeface.BOLD); setPadding(0, 0, 14, 0)
                       })
@@ -1588,7 +1602,7 @@ jobs:
                       col.addView(row)
                   }
                   col.addView(TextView(this).apply {
-                      text = "✓ পড়া সম্পন্ন"; textSize = 14f
+                      text = "পড়া সম্পন্ন"; textSize = 14f
                       setTextColor(Color.parseColor("#10B981"))
                       setTypeface(typeface, Typeface.BOLD)
                       gravity = Gravity.CENTER
@@ -1640,7 +1654,7 @@ jobs:
                       setPadding(0, 0, 0, 24)
                   }
                   header.addView(TextView(this).apply {
-                      text = "‹"; textSize = 30f; setPadding(0, 0, 16, 6)
+                      text = "<"; textSize = 26f; setPadding(0, 0, 16, 4)
                       setTextColor(Color.parseColor("#0F172A"))
                       setOnClickListener { finish() }
                   })
@@ -1740,7 +1754,7 @@ jobs:
                               account = "Default", strategy = etStrat.text.toString().trim(),
                               session = session, emotion = emotion
                           ))
-                          Toast.makeText(this@AddTradeActivity, "সেভ হয়েছে ✅", Toast.LENGTH_SHORT).show()
+                          Toast.makeText(this@AddTradeActivity, "সেভ হয়েছে", Toast.LENGTH_SHORT).show()
                           setResult(RESULT_OK); finish()
                       }
                   }
@@ -1811,7 +1825,7 @@ jobs:
                       setPadding(0, 0, 0, 20)
                   }
                   header.addView(TextView(this).apply {
-                      text = "‹"; textSize = 30f; setPadding(0, 0, 16, 6)
+                      text = "<"; textSize = 26f; setPadding(0, 0, 16, 4)
                       setTextColor(Color.parseColor("#0F172A"))
                       setOnClickListener { finish() }
                   })
@@ -1845,81 +1859,4 @@ jobs:
                   val c = MaterialCardView(this).apply {
                       radius = 24f; cardElevation = 3f
                       setCardBackgroundColor(Color.WHITE)
-                      strokeWidth = 1; strokeColor = Color.parseColor("#E2E8F0")
-                      layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 12 }
-                      isClickable = true; isFocusable = true
-                      setOnClickListener { onClick() }
-                  }
-                  val row = LinearLayout(this).apply {
-                      orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-                      setPadding(28, 24, 28, 24)
-                  }
-                  row.addView(LinearLayout(this).apply {
-                      background = GradientDrawable().apply { cornerRadius = 20f; setColor(Color.parseColor(colorHex)) }
-                      layoutParams = LinearLayout.LayoutParams(80, 80).apply { rightMargin = 20 }
-                      gravity = Gravity.CENTER
-                      addView(TextView(this@SettingsActivity).apply {
-                          text = icon; textSize = 18f; setTextColor(Color.WHITE)
-                          setTypeface(typeface, Typeface.BOLD); gravity = Gravity.CENTER
-                      })
-                  })
-                  val info = LinearLayout(this).apply {
-                      orientation = LinearLayout.VERTICAL
-                      layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
-                  }
-                  info.addView(TextView(this).apply {
-                      text = title; textSize = 15f
-                      setTextColor(Color.parseColor("#0F172A")); setTypeface(typeface, Typeface.BOLD)
-                  })
-                  info.addView(TextView(this).apply {
-                      text = sub; textSize = 12f; setTextColor(Color.parseColor("#64748B")); setPadding(0, 4, 0, 0)
-                  })
-                  row.addView(info)
-                  row.addView(TextView(this).apply { text = "›"; textSize = 24f; setTextColor(Color.parseColor("#94A3B8")) })
-                  c.addView(row); return c
-              }
-
-              private fun buildCsv(): String {
-                  val trades = store.all().sortedBy { it.date }
-                  val sb = StringBuilder(); sb.append('\uFEFF')
-                  sb.append("Date,Pair,Direction,Entry,Exit,Qty,P&L,Strategy,Session,Emotion,Notes\n")
-                  val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                  trades.forEach { t ->
-                      sb.append(fmt.format(Date(t.date))).append(',')
-                      sb.append(esc(t.pair)).append(',').append(t.direction).append(',')
-                      sb.append(t.entry).append(',').append(t.exit).append(',').append(t.qty).append(',')
-                      sb.append(String.format(Locale.US,"%.2f",t.pnl)).append(',')
-                      sb.append(esc(t.strategy)).append(',').append(esc(t.session)).append(',')
-                      sb.append(esc(t.emotion)).append(',').append(esc(t.notes)).append('\n')
-                  }
-                  return sb.toString()
-              }
-
-              private fun buildJson(): String {
-                  val arr = JSONArray(); store.all().forEach { arr.put(it.toJson()) }
-                  return arr.toString(2)
-              }
-
-              private fun esc(s: String) = "\"" + s.replace("\"", "\"\"").replace("\n"," ") + "\""
-
-              private fun saveTo(uri: android.net.Uri, content: String, type: String) {
-                  try {
-                      contentResolver.openOutputStream(uri)?.use { it.write(content.toByteArray()) }
-                      Toast.makeText(this, "$type সেভ হয়েছে ✅", Toast.LENGTH_LONG).show()
-                  } catch (e: Exception) {
-                      Toast.makeText(this, "ব্যর্থ: ${e.message}", Toast.LENGTH_LONG).show()
-                  }
-              }
-          }
-          ST_EOF
-
-      - name: Build APK
-        run: gradle assembleDebug --stacktrace
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: trading-master-apk
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 30
+                      strokeWidth = 
