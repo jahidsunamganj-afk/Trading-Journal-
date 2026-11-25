@@ -267,17 +267,24 @@ jobs:
           class ChecklistStore(ctx: Context) {
               private val sp = ctx.applicationContext.getSharedPreferences("checklist", Context.MODE_PRIVATE)
               private fun todayKey() = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-              fun isChecked(id: String) = sp.getBoolean("${todayKey()}_$id", false)
-              fun setChecked(id: String, v: Boolean) = sp.edit().putBoolean("${todayKey()}_$id", v).apply()
-              fun countChecked(items: List<ChecklistItem>) = items.count { isChecked(it.id) }
+              fun isChecked(id: String) = sp.getBoolean(todayKey()+"_"+id, false)
+              fun setChecked(id: String, v: Boolean) = sp.edit().putBoolean(todayKey()+"_"+id, v).apply()
+              fun countChecked(items: List<ChecklistItem>): Int {
+                  var c = 0
+                  for (it in items) if (isChecked(it.id)) c++
+                  return c
+              }
           }
 
           class LessonProgressStore(ctx: Context) {
               private val sp = ctx.applicationContext.getSharedPreferences("lessons", Context.MODE_PRIVATE)
               fun isRead(id: String) = sp.getBoolean(id, false)
               fun markRead(id: String) = sp.edit().putBoolean(id, true).apply()
-              fun readCount(total: Int) = (0 until total).count { _ -> false }
-              fun countRead(allIds: List<String>) = allIds.count { isRead(it) }
+              fun readCount(ids: List<String>): Int {
+                  var c = 0
+                  for (id in ids) if (isRead(id)) c++
+                  return c
+              }
           }
 
           object Stats {
@@ -313,7 +320,7 @@ jobs:
           }
           STORES_EOF
 
-      - name: Write Stats and Chart
+      - name: Write Chart
         run: |
           cat > app/src/main/java/com/tradingmaster/app/EquityChartView.kt <<'CHART_EOF'
           package com.tradingmaster.app
@@ -349,10 +356,10 @@ jobs:
               override fun onDraw(canvas: Canvas) {
                   super.onDraw(canvas)
                   if (data.isEmpty()) {
-                      canvas.drawText("এখনো ডেটা নেই", width/2f, height/2f, textPaint); return
+                      canvas.drawText("No data yet", width/2f, height/2f, textPaint); return
                   }
                   if (data.size == 1) {
-                      canvas.drawText("আরও ট্রেড যোগ করুন", width/2f, height/2f, textPaint); return
+                      canvas.drawText("Add more trades", width/2f, height/2f, textPaint); return
                   }
                   val w = width.toFloat(); val h = height.toFloat(); val p = 40f
                   val minV = minOf(data.min(), 0.0)
@@ -392,7 +399,7 @@ jobs:
           }
           CHART_EOF
 
-      - name: Write Content Part 1
+      - name: Write Content
         run: |
           cat > app/src/main/java/com/tradingmaster/app/Content.kt <<'CONTENT_EOF'
           package com.tradingmaster.app
@@ -417,8 +424,8 @@ jobs:
                       "ট্রেডিং হলো আর্থিক বাজারে সম্পদ কেনা-বেচা করে দামের ওঠানামা থেকে লাভ করা। ফরেক্স, স্টক, ক্রিপ্টো—সব জায়গায় ট্রেডিং হয়। সফল ট্রেডারের তিনটি গুণ—ধৈর্য, ডিসিপ্লিন ও জ্ঞান।",
                       listOf("কেনা-বেচার মাধ্যমে লাভ","ধৈর্য+ডিসিপ্লিন+জ্ঞান","সব ট্রেডে লাভ হয় না")),
                   Lesson("b2","বেসিক","মার্কেটের ধরন","ফরেক্স, স্টক, ক্রিপ্টো",
-                      "প্রধান তিনটি মার্কেট: ফরেক্স (মুদ্রা জোড়া, ২৪ ঘণ্টা), স্টক (কোম্পানির শেয়ার, নির্দিষ্ট সময়), ক্রিপ্টো (বিটকয়েন, ইথেরিয়াম—২৪/৭)। নতুনদের জন্য ফরেক্স বা ক্রিপ্টো বেশি জনপ্রিয়।",
-                      listOf("ফরেক্স ২৪ ঘণ্টা","স্টক নির্দিষ্ট সময়","ক্রিপ্টো সবচেয়ে ভোলাটাইল")),
+                      "প্রধান তিনটি মার্কেট: ফরেক্স (মুদ্রা জোড়া, ২৪ ঘণ্টা), স্টক (কোম্পানির শেয়ার), ক্রিপ্টো (বিটকয়েন, ইথেরিয়াম)। নতুনদের জন্য ফরেক্স বা ক্রিপ্টো বেশি জনপ্রিয়।",
+                      listOf("ফরেক্স ২৪ ঘণ্টা","স্টক নির্দিষ্ট সময়","ক্রিপ্টো ভোলাটাইল")),
                   Lesson("b3","বেসিক","লট, পিপ, লিভারেজ","মৌলিক টার্ম",
                       "পিপ = মূল্যের ক্ষুদ্রতম পরিবর্তন। লট = ট্রেড সাইজ (১ স্ট্যান্ডার্ড = ১০০,০০০)। লিভারেজ = ব্রোকারের ঋণ, যা ছোট ডিপোজিটে বড় ট্রেড করতে দেয় কিন্তু ঝুঁকি বাড়ায়।",
                       listOf("১ লট = ১০০,০০০","লিভারেজ ঝুঁকি বাড়ায়","সঠিক সাইজ জানুন")),
@@ -427,31 +434,25 @@ jobs:
                       listOf("ডেমো ১ মাস","ছোট ডিপোজিট","ধার করা টাকা নয়")),
                   Lesson("c1","ক্যান্ডেলস্টিক","ক্যান্ডেলের গঠন","OHLC",
                       "প্রতিটি ক্যান্ডেলে ৪টি দাম: Open, High, Low, Close। সবুজ = বুলিশ, লাল = বিয়ারিশ। বড় বডি = শক্তিশালী মুভমেন্ট, ছোট = দুর্বল।",
-                      listOf("সবুজ=বুলিশ, লাল=বিয়ারিশ","বডি=open-close","ছায়া=high/low")),
+                      listOf("সবুজ=বুলিশ","বডি=open-close","ছায়া=high/low")),
                   Lesson("c2","ক্যান্ডেলস্টিক","হ্যামার ও ডোজি","গুরুত্বপূর্ণ প্যাটার্ন",
                       "হ্যামার: ছোট বডি, লম্বা নিচের ছায়া—রিভার্সালের সংকেত। ডোজি: open ও close প্রায় সমান—মার্কেট দ্বিধায়, বড় মুভমেন্ট আসতে পারে।",
                       listOf("হ্যামার=reversal","ডোজি=indecision","কনফার্মেশন দেখুন")),
                   Lesson("c3","ক্যান্ডেলস্টিক","এনগালফিং","শক্তিশালী রিভার্সাল",
                       "বুলিশ এনগালফিং: বড় সবুজ ক্যান্ডেল আগের লালকে ঢেকে দেয়। বিয়ারিশ: উল্টো। সাপোর্ট/রেজিস্ট্যান্সে এলে সবচেয়ে শক্তিশালী।",
-                      listOf("বড় ক্যান্ডেল ঢাকে","সাপোর্টে সবচেয়ে ভালো","ভলিউম বেশি হলে নিশ্চিত")),
-                  Lesson("c4","ক্যান্ডেলস্টিক","পিনবার","রিজেকশন প্যাটার্ন",
-                      "লম্বা ছায়া ও ছোট বডি। দাম একটি লেভেল ছুঁয়ে ফিরে এলে সংকেত। ওপরের লম্বা ছায়া = bearish, নিচের = bullish।",
-                      listOf("লম্বা ছায়া","রিজেকশনের সংকেত","ট্রেন্ডের শেষে ভালো")),
+                      listOf("বড় ক্যান্ডেল ঢাকে","সাপোর্টে শক্তিশালী","ভলিউম দেখুন")),
                   Lesson("i1","ইন্ডিকেটর","মুভিং এভারেজ","ট্রেন্ড ফিল্টার",
                       "MA গত X ক্যান্ডেলের গড় দাম। 50 MA=মাঝারি, 200 MA=দীর্ঘ। দাম MA-এর ওপরে=bullish, নিচে=bearish। 50 MA 200 MA-কে ওপরে ক্রস=গোল্ডেন ক্রস।",
                       listOf("দাম MA-এর ওপরে=bullish","গোল্ডেন ক্রস=buy","ডেথ ক্রস=sell")),
                   Lesson("i2","ইন্ডিকেটর","RSI","ওভারবট/ওভারসোল্ড",
                       "RSI 0-100 এর মধ্যে। 70+=overbought, 30-=oversold। ট্রেন্ডিং মার্কেটে RSI দীর্ঘ সময় চরমে থাকতে পারে—তাই একা ব্যবহার করবেন না।",
-                      listOf("70+=overbought","30-=oversold","ডাইভার্জেন্স দেখুন")),
+                      listOf("70+=overbought","30-=oversold","ডাইভার্জেন্স")),
                   Lesson("i3","ইন্ডিকেটর","MACD","মোমেন্টাম",
                       "MACD=12EMA-26EMA। সিগন্যাল=MACD-এর 9EMA। MACD সিগন্যালের ওপরে=bullish। হিস্টোগ্রাম=momentum। ডাইভার্জেন্স=reversal signal।",
-                      listOf("MACD-সিগন্যাল ক্রস","হিস্টোগ্রাম=momentum","ডাইভার্জেন্স দেখুন")),
-                  Lesson("i4","ইন্ডিকেটর","বোলিঙ্গার ব্যান্ড","ভোলাটিলিটি",
-                      "৩টি লাইন: উপরের, মাঝারি (20MA), নিচের। ব্যান্ড সংকীর্ণ=কম ভোলাটিলিটি (বড় মুভমেন্ট আসতে পারে)। প্রশস্ত=উচ্চ ভোলাটিলিটি। দাম উপরের ব্যান্ড স্পর্শ=overbought।",
-                      listOf("সংকীর্ণ=বড় মুভ আসছে","প্রশস্ত=উচ্চ ভোলাটিলিটি","ব্যান্ড স্পর্শ=signal")),
+                      listOf("MACD-সিগন্যাল ক্রস","হিস্টোগ্রাম=momentum","ডাইভার্জেন্স")),
                   Lesson("r1","রিস্ক ম্যানেজমেন্ট","২% রুল","সবচেয়ে গুরুত্বপূর্ণ",
                       "প্রতি ট্রেডে অ্যাকাউন্টের সর্বোচ্চ ২% রিস্ক করুন। $1000-এ সর্বোচ্চ $20। টানা ১০টি লসেও ২০% থাকবে, রিকভারি সম্ভব।",
-                      listOf("সর্বোচ্চ ২% রিস্ক","টানা লসেও টিকে থাকা","রিকভারির সুযোগ")),
+                      listOf("সর্বোচ্চ ২%","টানা লসেও টিকে","রিকভারি সম্ভব")),
                   Lesson("r2","রিস্ক ম্যানেজমেন্ট","রিস্ক:রিওয়ার্ড","লাভ/লস অনুপাত",
                       "কমপক্ষে ১:২ R:R। $10 রিস্কে $20+ টার্গেট। ১:২ R:R-এ ৪০% উইন রেটেও লাভজনক। ১:১-এর নিচে এড়িয়ে চলুন।",
                       listOf("কমপক্ষে ১:২","৪০% উইনেও লাভ","১:১ এড়িয়ে চলুন")),
@@ -459,14 +460,14 @@ jobs:
                       "প্রতিটি ট্রেডে স্টপ লস সেট করুন—এন্ট্রির আগেই। সাপোর্ট/রেজিস্ট্যান্সের নিচে/উপরে রাখুন। কখনো স্টপ লস সরাবেন না—এটি সবচেয়ে বড় ভুল।",
                       listOf("এন্ট্রির আগেই সেট","সাপোর্টে রাখুন","কখনো সরাবেন না")),
                   Lesson("r4","রিস্ক ম্যানেজমেন্ট","পজিশন সাইজিং","কত লট",
-                      "পজিশন=(অ্যাকাউন্ট×রিস্ক%)÷(এন্ট্রি-স্টপ)। $1000, ২%, 50 পিপ স্টপে পজিশন=0.4 লট। সঠিক সাইজ=সঠিক রিস্ক।",
+                      "পজিশন=(অ্যাকাউন্ট×রিস্ক%)÷(এন্ট্রি-স্টপ)। $1000, ২%, 50 পিপ স্টপে=0.4 লট। সঠিক সাইজ=সঠিক রিস্ক।",
                       listOf("ফর্মুলা মনে রাখুন","সাইজ=রিস্ক নিয়ন্ত্রণ","কখনো বেশি নয়")),
                   Lesson("p1","সাইকোলজি","ভয় ও লোভ","প্রধান দুই শত্রু",
                       "ভয়: লাভের ট্রেড তাড়াতাড়ি বন্ধ। লোভ: লস ধরে রাখা বা বড় সাইজ। সমাধান = লিখিত প্ল্যান ও কঠোর অনুসরণ।",
                       listOf("ভয়=তাড়াতাড়ি এক্সিট","লোভ=বড় লস","প্ল্যান=সমাধান")),
                   Lesson("p2","সাইকোলজি","ডিসিপ্লিন","সফলতার চাবি",
                       "ডিসিপ্লিন মানে নিজের নিয়ম মানা। প্রতিদিন নির্দিষ্ট সময়ে ট্রেড, নির্দিষ্ট রিস্ক, নির্দিষ্ট স্ট্রাটেজি। একবার ভাঙলে অভ্যাসে পরিণত হয়।",
-                      listOf("নিজের নিয়ম মানুন","রুটিন তৈরি করুন","একবারও ভাঙবেন না")),
+                      listOf("নিজের নিয়ম মানুন","রুটিন তৈরি","একবারও ভাঙবেন না")),
                   Lesson("p3","সাইকোলজি","ট্রেডিং প্ল্যান","লিখিত পরিকল্পনা",
                       "একটি ট্রেডিং প্ল্যানে থাকবে: কী, কখন, কত রিস্ক, কীভাবে এন্ট্রি/এক্সিট, দৈনিক কত ট্রেড। প্ল্যান ছাড়া ট্রেড=জুয়া।",
                       listOf("লিখিত প্ল্যান","নিয়ম স্পষ্ট","ব্যাকটেস্ট")),
@@ -489,11 +490,11 @@ jobs:
                       "দেশের অর্থনীতি, সুদের হার, GDP, মুদ্রাস্ফীতি—এসব দেখে ট্রেড। দীর্ঘমেয়াদে কার্যকর, স্বল্পমেয়াদে ধীর।",
                       listOf("সুদের হার","GDP, মুদ্রাস্ফীতি","দীর্ঘমেয়াদে ভালো")),
                   Lesson("a2","অ্যাডভান্সড","নিউজ ট্রেডিং","ঘোষণার সময়",
-                      "বড় নিউজের (NFP, CPI, FOMC) সময় মার্কেট দ্রুত মুভ করে। নতুনদের এড়িয়ে চলা উচিত। অভিজ্ঞদের জন্য দুর্দান্ত সুযোগ কিন্তু ঝুঁকিপূর্ণ।",
+                      "বড় নিউজের (NFP, CPI, FOMC) সময় মার্কেট দ্রুত মুভ করে। নতুনদের এড়িয়ে চলা উচিত। অভিজ্ঞদের জন্য সুযোগ কিন্তু ঝুঁকিপূর্ণ।",
                       listOf("NFP, CPI, FOMC","নতুনদের এড়ানো","ঝুঁকিপূর্ণ সুযোগ")),
                   Lesson("a3","অ্যাডভান্সড","মার্কেট সেশন","কখন ট্রেড",
-                      "এশিয়া (০৬-১৫), লন্ডন (১৫-২৪), নিউইয়র্ক (২০-০৫)। লন্ডন+NY overlap (২০-২৪) সবচেয়ে বেশি ভোলাটাইল। বাংলাদেশ সময়ে এই সময়ে ট্রেড করুন।",
-                      listOf("লন্ডন+NY=সেরা","বাংলাদেশ সময় হিসাব","ভোলাটাইল সময়ে ট্রেড")),
+                      "এশিয়া (০৬-১৫), লন্ডন (১৫-২৪), নিউইয়র্ক (২০-০৫)। লন্ডন+NY overlap (২০-২৪) সবচেয়ে ভোলাটাইল। বাংলাদেশ সময়ে এই সময়ে ট্রেড করুন।",
+                      listOf("লন্ডন+NY=সেরা","বাংলাদেশ সময় হিসাব","ভোলাটাইলে ট্রেড")),
                   Lesson("a4","অ্যাডভান্সড","ব্রোকার সিলেকশন","সঠিক ব্রোকার",
                       "নিয়ন্ত্রিত ব্রোকার (FCA, ASIC) বেছে নিন। স্প্রেড, কমিশন, লিভারেজ, উইথড্রয়াল—সব চেক করুন। বাংলাদেশ থেকে কাজ করে কিনা দেখুন।",
                       listOf("নিয়ন্ত্রিত ব্রোকার","স্প্রেড কম","উইথড্রয়াল সহজ"))
@@ -611,7 +612,6 @@ jobs:
                   }
               }
 
-              // HOME TAB
               private fun buildHome(): ScrollView {
                   val sv = ScrollView(this).apply { setBackgroundColor(Color.parseColor("#F8FAFC")) }
                   val col = LinearLayout(this).apply {
@@ -646,7 +646,7 @@ jobs:
                       text = "মোট P&L"; textSize = 12f; setTextColor(Color.WHITE); alpha = 0.85f
                   })
                   hero.addView(TextView(this).apply {
-                      text = (if (pnl>=0) "+\$" else "-\$") + String.format(Locale.US,"%.2f",Math.abs(pnl))
+                      text = (if (pnl>=0) "+$" else "-$") + String.format(Locale.US,"%.2f",Math.abs(pnl))
                       textSize = 34f; setTextColor(Color.WHITE)
                       setTypeface(typeface, Typeface.BOLD); setPadding(0, 10, 0, 4)
                   })
@@ -702,12 +702,13 @@ jobs:
                   }
                   checkCard.addView(checkInner)
 
+                  val lessonsRead = lp.readCount(Content.lessons.map { it.id })
                   val qr = LinearLayout(this).apply {
                       orientation = LinearLayout.HORIZONTAL
                       layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 16 }
                   }
-                  qr.addView(quickStat("📚 পড়া", "${lp.countRead(Content.lessons.map { it.id })}/${Content.lessons.size}", "#3B82F6"))
-                  qr.addView(quickStat("🎯 পেয়ার", Stats.bestPair(trades).first.ifBlank { "—" }, "#10B981"))
+                  qr.addView(quickStat("📚 পড়া", "$lessonsRead/${Content.lessons.size}", "#3B82F6"))
+                  qr.addView(quickStat("🎯 সেরা পেয়ার", Stats.bestPair(trades).first.ifBlank { "—" }, "#10B981"))
 
                   col.addView(hero)
                   col.addView(checkCard)
@@ -778,7 +779,6 @@ jobs:
                   }
               }
 
-              // LEARN TAB
               private fun buildLearn(): ScrollView {
                   val sv = ScrollView(this).apply { setBackgroundColor(Color.parseColor("#F8FAFC")) }
                   val col = LinearLayout(this).apply {
@@ -842,7 +842,6 @@ jobs:
                   sv.addView(col); return sv
               }
 
-              // JOURNAL TAB
               private fun buildJournal(): FrameLayout {
                   val wrap = FrameLayout(this)
                   val sv = ScrollView(this).apply { setBackgroundColor(Color.parseColor("#F8FAFC")) }
@@ -931,7 +930,7 @@ jobs:
                   }
                   row.addView(info)
                   row.addView(TextView(this).apply {
-                      text = (if (win) "+" else "-") + "\$" + String.format(Locale.US,"%.2f",Math.abs(t.pnl))
+                      text = (if (win) "+" else "-") + "$" + String.format(Locale.US,"%.2f",Math.abs(t.pnl))
                       textSize = 14f
                       setTextColor(Color.parseColor(if (win) "#10B981" else "#EF4444"))
                       setTypeface(typeface, Typeface.BOLD)
@@ -949,7 +948,7 @@ jobs:
                   }
                   lbl("পেয়ার", t.pair); lbl("ডিরেকশন", t.direction)
                   lbl("এন্ট্রি → এক্সিট", "${t.entry} → ${t.exit}")
-                  lbl("P&L", (if (t.pnl>=0) "+" else "") + "\$" + String.format(Locale.US,"%.2f",t.pnl))
+                  lbl("P&L", (if (t.pnl>=0) "+" else "") + "$" + String.format(Locale.US,"%.2f",t.pnl))
                   if (t.strategy.isNotBlank()) lbl("স্ট্রাটেজি", t.strategy)
                   if (t.session.isNotBlank()) lbl("সেশন", t.session)
                   if (t.emotion.isNotBlank()) lbl("ইমোশন", t.emotion)
@@ -960,7 +959,6 @@ jobs:
                       .show()
               }
 
-              // TOOLS TAB
               private fun buildTools(): ScrollView {
                   val sv = ScrollView(this).apply { setBackgroundColor(Color.parseColor("#F8FAFC")) }
                   val col = LinearLayout(this).apply {
@@ -1055,7 +1053,7 @@ jobs:
                               val s = sl.text.toString().toDouble()
                               val diff = Math.abs(e-s)
                               if (diff==0.0) return@setPositiveButton
-                              res.text = "রিস্ক: \$%.2f\nপজিশন: %.4f".format(b*r, (b*r)/diff)
+                              res.text = "রিস্ক: $%.2f\nপজিশন: %.4f".format(b*r, (b*r)/diff)
                           } catch (ex: Exception) { res.text = "সব ফিল্ড পূরণ করুন" }
                       }.setNegativeButton("বন্ধ", null).show()
               }
@@ -1088,13 +1086,13 @@ jobs:
                   val d = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(40, 16, 40, 0) }
                   val lot = inputField("লট সাইজ").apply { setText("1") }
                   val res = TextView(this).apply {
-                      text = "স্ট্যান্ডার্ড লটে প্রতি পিপ ~\$10"; textSize = 13f
+                      text = "স্ট্যান্ডার্ড লটে প্রতি পিপ ~$10"; textSize = 13f
                       setTextColor(Color.parseColor("#F59E0B")); setPadding(0, 16, 0, 8)
                   }
                   d.addView(lbl("লট সাইজ")); d.addView(lot); d.addView(res)
                   AlertDialog.Builder(this).setTitle("পিপ ভ্যালু").setView(d)
                       .setPositiveButton("হিসাব") { _, _ ->
-                          try { res.text = "প্রতি পিপ: \$%.2f".format(lot.text.toString().toDouble()*10) }
+                          try { res.text = "প্রতি পিপ: $%.2f".format(lot.text.toString().toDouble()*10) }
                           catch (ex: Exception) { res.text = "সঠিক মান দিন" }
                       }.setNegativeButton("বন্ধ", null).show()
               }
@@ -1118,7 +1116,7 @@ jobs:
                               val r = rate.text.toString().toDouble()/100
                               val m = months.text.toString().toInt()
                               val f = s * Math.pow(1+r, m.toDouble())
-                              res.text = "চূড়ান্ত: \$%.2f\nলাভ: \$%.2f".format(f, f-s)
+                              res.text = "চূড়ান্ত: $%.2f\nলাভ: $%.2f".format(f, f-s)
                           } catch (ex: Exception) { res.text = "সব ফিল্ড পূরণ করুন" }
                       }.setNegativeButton("বন্ধ", null).show()
               }
@@ -1144,7 +1142,6 @@ jobs:
                       }.setNegativeButton("বন্ধ", null).show()
               }
 
-              // MORE TAB
               private fun buildMore(): ScrollView {
                   val sv = ScrollView(this).apply { setBackgroundColor(Color.parseColor("#F8FAFC")) }
                   val col = LinearLayout(this).apply {
@@ -1318,7 +1315,7 @@ jobs:
                   val pf = Stats.profitFactor(trades)
 
                   val row1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-                  row1.addView(statCard("মোট P&L", (if (pnl>=0) "+\$" else "-\$")+String.format(Locale.US,"%.2f",Math.abs(pnl)), if (pnl>=0) "#10B981" else "#EF4444"))
+                  row1.addView(statCard("মোট P&L", (if (pnl>=0) "+$" else "-$")+String.format(Locale.US,"%.2f",Math.abs(pnl)), if (pnl>=0) "#10B981" else "#EF4444"))
                   row1.addView(statCard("উইন রেট", String.format(Locale.US,"%.1f",wr)+"%", "#3B82F6"))
                   col.addView(row1)
 
@@ -1418,7 +1415,7 @@ jobs:
                   })
                   row.addView(info)
                   row.addView(TextView(this).apply {
-                      text = (if (pnl>=0) "+" else "-") + "\$" + String.format(Locale.US,"%.2f",Math.abs(pnl))
+                      text = (if (pnl>=0) "+" else "-") + "$" + String.format(Locale.US,"%.2f",Math.abs(pnl))
                       textSize = 15f; setTextColor(Color.parseColor(colorHex))
                       setTypeface(typeface, Typeface.BOLD)
                   })
@@ -1435,7 +1432,6 @@ jobs:
           import android.content.Intent
           import android.graphics.Color
           import android.graphics.Typeface
-          import android.graphics.drawable.GradientDrawable
           import android.os.Bundle
           import android.view.Gravity
           import android.widget.*
@@ -1460,7 +1456,7 @@ jobs:
                       setOnClickListener { finish() }
                   })
                   header.addView(TextView(this).apply {
-                      text = Content.categoryIcons[cat] + " " + cat; textSize = 22f
+                      text = (Content.categoryIcons[cat] ?: "") + " " + cat; textSize = 22f
                       setTextColor(Color.parseColor("#0F172A"))
                       setTypeface(typeface, Typeface.BOLD)
                   })
@@ -1560,10 +1556,12 @@ jobs:
                       setPadding(28, 24, 28, 24)
                       layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 20 }
                   }
-                  contentCard.addView(TextView(this).apply {
+                  val contentTv = TextView(this).apply {
                       text = lesson.content; textSize = 15f
-                      setTextColor(Color.parseColor("#334155")); lineSpacingExtra = 8f
-                  })
+                      setTextColor(Color.parseColor("#334155"))
+                  }
+                  contentTv.setLineSpacing(8f, 1f)
+                  contentCard.addView(contentTv)
                   col.addView(contentCard)
                   col.addView(TextView(this).apply {
                       text = "মূল পয়েন্ট"; textSize = 15f
@@ -1601,7 +1599,7 @@ jobs:
           }
           LV_EOF
 
-      - name: Write AddTrade and Settings
+      - name: Write AddTrade
         run: |
           cat > app/src/main/java/com/tradingmaster/app/AddTradeActivity.kt <<'AT_EOF'
           package com.tradingmaster.app
@@ -1614,6 +1612,7 @@ jobs:
           import android.text.InputType
           import android.view.Gravity
           import android.widget.*
+          import androidx.appcompat.app.AlertDialog
           import androidx.appcompat.app.AppCompatActivity
           import java.text.SimpleDateFormat
           import java.util.*
@@ -1772,6 +1771,8 @@ jobs:
           }
           AT_EOF
 
+      - name: Write Settings
+        run: |
           cat > app/src/main/java/com/tradingmaster/app/SettingsActivity.kt <<'ST_EOF'
           package com.tradingmaster.app
 
@@ -1829,7 +1830,7 @@ jobs:
                   col.addView(actionCard("JSON","JSON আকারে সেভ","ব্যাকআপ বা শেয়ার","#6366F1") {
                       saveJson.launch("trading_master_$ds.json")
                   })
-                  col.addView(actionCard("✕","সব ট্রেড মুছুন","${trades.size}টি ট্রেড স্থায়ীভাবে মুছে যাবে","#EF4444") {
+                  col.addView(actionCard("X","সব ট্রেড মুছুন","${trades.size}টি ট্রেড স্থায়ীভাবে মুছে যাবে","#EF4444") {
                       AlertDialog.Builder(this).setTitle("নিশ্চিত?")
                           .setMessage("সব ট্রেড স্থায়ীভাবে মুছে যাবে।")
                           .setPositiveButton("হ্যাঁ, মুছুন") { _, _ ->
